@@ -40,3 +40,8 @@
  :click-tag
  (fn [db [_ tag]]
    (db/click-tag db tag)))
+
+(re-frame/reg-event-db
+ :search
+ (fn [db [_ text]]
+   (db/search-text db text)))

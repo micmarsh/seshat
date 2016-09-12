@@ -5,7 +5,8 @@
   #:data{:notes []
          :display #:display{:notes []
                             :tags []
-                            :selected-tags #{}}})
+                            :filters #:filters{:tags #{}
+                                               :search ""}}})
 
 (defn initial-data [] default-db)
 
@@ -16,7 +17,7 @@
   [db]
   (let [raw-notes (:data/notes db)
         ;; TODO ^ sort by update time once that's a thing
-        tagged-notes (notes/filter-all raw-notes (-> db :data/display :display/selected-tags))
+        tagged-notes (notes/filter-all (-> db :data/display :display/filters :filters/tags) raw-notes)
         tags-list (sort (notes/unique-tags tagged-notes))]
     (-> db
         (assoc-in [:data/display :display/notes] tagged-notes)
@@ -29,7 +30,12 @@
 
 (defn click-tag [db tag]
   (-> db
-      (update-in [:data/display :display/selected-tags] toggle tag)
+      (update-in [:data/display :display/filters :filters/tags] toggle tag)
+      (update-display)))
+
+(defn search-text [db text]
+  (-> db
+      (assoc-in [:data/display :display/filters :filters/search] text)
       (update-display)))
 
 (defn add-note [db note]

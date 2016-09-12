@@ -1,10 +1,15 @@
 (ns seshat.views
     (:require [re-frame.core :as re-frame]))
 
+(defn input-text [event]
+  (-> event .-target .-value))
+
 (defn notes-list []
   (let [notes (re-frame/subscribe [:notes-list])]
     (fn []
       [:div#notes-list "Notes"
+       [:br]
+       [:input {:on-change #(re-frame/dispatch [:search (input-text %)])}]
        (doall
         (for [note @notes]
           [:div {:key (:id note)}

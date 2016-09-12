@@ -3,6 +3,15 @@
     (:require [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
- :name
- (fn [db]
-   (:name db)))
+ :display
+ (fn [db] (:data/display db)))
+
+(re-frame/reg-sub
+ :notes-list
+ :<- [:display]
+ (fn [display] (:display/notes display)))
+
+(re-frame/reg-sub
+ :tags-list
+ :<- [:display]
+ (fn [display] (:display/tags display)))

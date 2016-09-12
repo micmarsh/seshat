@@ -23,7 +23,12 @@
        [:div "Selected: "
         (if (empty? @selected)
           "(none)"
-          (clojure.string/join ", " @selected))]
+          (into '()
+                (mapcat
+                 (fn [tag]
+                   [" " [:span {:on-click #(re-frame/dispatch [:click-tag tag])
+                                :key tag} tag]]))
+                @selected))]
        (doall
         (for [tag @tags]
           [:div {:key tag

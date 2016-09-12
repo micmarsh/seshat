@@ -10,6 +10,11 @@
 
 (defn initial-data [] default-db)
 
+(defn apply-filters [notes filters]
+  (->> notes
+       (notes/filter-tags (:filters/tags filters))
+       (notes/filter-text (:filters/search filters))))
+
 (defn update-display
   "Given a full db object, reflect any of these changes:
     * the full raw note data set
@@ -17,7 +22,7 @@
   [db]
   (let [raw-notes (:data/notes db)
         ;; TODO ^ sort by update time once that's a thing
-        tagged-notes (notes/filter-all (-> db :data/display :display/filters :filters/tags) raw-notes)
+        tagged-notes (apply-filters raw-notes (-> db :data/display :display/filters))
         tags-list (sort (notes/unique-tags tagged-notes))]
     (-> db
         (assoc-in [:data/display :display/notes] tagged-notes)

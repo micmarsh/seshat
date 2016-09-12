@@ -16,17 +16,14 @@
        (notes/filter-text (:filters/search filters))))
 
 (defn update-display
-  "Given a full db object, reflect any of these changes:
-    * the full raw note data set
-    * the set of selected tags"
-  [db]
-  (let [raw-notes (:data/notes db)
-        ;; TODO ^ sort by update time once that's a thing
-        tagged-notes (apply-filters raw-notes (-> db :data/display :display/filters))
-        tags-list (sort (notes/unique-tags tagged-notes))]
-    (-> db
-        (assoc-in [:data/display :display/notes] tagged-notes)
-        (assoc-in [:data/display :display/tags] tags-list))))
+  "Given a display object and a set of notes, use the display's current filters
+   to derive a new set of notes and tags, updating the display"
+  [display notes]
+  (let [filtered-notes (apply-filters notes (:display/filters display))
+        tags-list (sort (notes/unique-tags filtered-notes))]
+    (-> display
+        (assoc :display/notes filtered-notes)
+        (assoc :display/tags tags-list))))
 
 (defn toggle [set item]
   (if (contains? set item)
@@ -36,14 +33,15 @@
 (defn click-tag [db tag]
   (-> db
       (update-in [:data/display :display/filters :filters/tags] toggle tag)
-      (update-display)))
+      (update :data/display update-display (:data/notes db))))
 
 (defn search-text [db text]
   (-> db
       (assoc-in [:data/display :display/filters :filters/search] text)
-      (update-display)))
+      (update :data/display update-display (:data/notes db))))
 
 (defn add-note [db note]
-  (-> db
-      (update :data/notes conj note)
-      (update-display)))
+  (let [new-notes (conj (:data/notes db) note)]
+    (-> db
+        (assoc :data/notes new-notes)
+        (update :data/display update-display new-notes))))

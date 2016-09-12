@@ -1,6 +1,8 @@
-# seshat
+# Seshat
 
-A [re-frame](https://github.com/Day8/re-frame) application designed to ... well, that part is up to you.
+[Seshat](https://en.wikipedia.org/wiki/Seshat), Egyptian goddess of knowledge and writing.
+
+A full-stack Clojure note-taking app. Very WIP.
 
 ## Development Mode
 

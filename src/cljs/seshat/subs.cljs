@@ -15,3 +15,8 @@
  :tags-list
  :<- [:display]
  (fn [display] (:display/tags display)))
+
+(re-frame/reg-sub
+ :selected-tags
+ :<- [:display]
+ (fn [display] (:display/selected-tags display)))

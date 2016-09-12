@@ -11,12 +11,18 @@
            (:text note)]))])))
 
 (defn tags-list []
-  (let [tags (re-frame/subscribe [:tags-list])]
+  (let [tags (re-frame/subscribe [:tags-list])
+        selected (re-frame/subscribe [:selected-tags])]
     (fn []
       [:div#tags-list "Tags"
+       [:div "Selected: "
+        (if (empty? @selected)
+          "(none)"
+          (clojure.string/join ", " @selected))]
        (doall
         (for [tag @tags]
-          [:div {:key tag} tag]))])))
+          [:div {:key tag
+                 :on-click #(re-frame/dispatch [:click-tag tag])} tag]))])))
 
 (defn main-panel []
   [:div#main-panel

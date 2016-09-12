@@ -11,7 +11,9 @@
    {:id 2
     :text "#music #listen Beethoven all the symphonies"}
    {:id 3
-    :text "remember #todo stuff other than this side project #today"}])
+    :text "remember #todo stuff other than this side project #today"}
+   {:id 4 :text "yes pleas"}
+   {:id 5 :text "#wewlad"}])
 
 (defroutes routes*
   (GET "/" [] (resource-response "index.html" {:root "public"}))

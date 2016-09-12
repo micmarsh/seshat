@@ -36,7 +36,7 @@
  (fn [db [_ note]]
    (db/add-note db note)))
 
-#_(js/setTimeout
- #(re-frame/dispatch [:query-result [{:id 4 :text "yes pleas"}
-                                     {:id 5 :text "#wewlad"}]])
- 5000)
+(re-frame/reg-event-db
+ :click-tag
+ (fn [db [_ tag]]
+   (db/click-tag db tag)))

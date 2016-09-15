@@ -5,7 +5,7 @@
                  [binaryage/devtools "0.6.1"]
                  [re-frame "0.8.0"]
                  [day8.re-frame/http-fx "0.0.4"]
-                 [ring-middleware-format "0.7.0"]
+                 [fogus/ring-edn "0.3.0"]
                  [compojure "1.5.0"]
                  [yogthos/config "0.8"]
                  [ring "1.4.0"]]

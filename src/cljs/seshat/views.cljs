@@ -6,11 +6,11 @@
   (-> event .-target .-value))
 
 (defn tag-span [tag]
-  [:span {:on-click #(re-frame/dispatch [:click-tag tag])
-          :key tag} tag])
+  [:span.tag-text
+   {:on-click #(re-frame/dispatch [:click-tag tag])
+    :key tag} tag])
 
-(defn display-word
-  [^String word]
+(defn display-word [word]
   (if (str/starts-with? word "#")
     (tag-span word)
     word))
@@ -24,20 +24,23 @@
 (defn notes-list []
   (let [notes (re-frame/subscribe [:notes-list])]
     (fn []
-      [:div#notes-list "Notes"
-       [:br]
-       [:input {:on-change #(re-frame/dispatch [:search (input-text %)])}]
+      [:div#notes-list
+       [:h2 "Notes"]
+       [:div#search-box
+        [:span "Search: "]
+        [:input {:on-change #(re-frame/dispatch [:search (input-text %)])}]]
        (doall
         (for [note @notes]
-          [:div {:key (:id note)}
+          [:div.note-content {:key (:id note)}
            (display-note (:text note))]))])))
 
 (defn tags-list []
   (let [tags (re-frame/subscribe [:tags-list])
         selected (re-frame/subscribe [:selected-tags])]
     (fn []
-      [:div#tags-list "Tags"
-       [:div "Selected: "
+      [:div#tags-list
+       [:h2 "Tags"]
+       [:div#selected-tags "Selected: "
         (if (empty? @selected)
           "(none)"
           (into ()
@@ -45,7 +48,7 @@
                 @selected))]
        (doall
         (for [tag @tags]
-          (assoc (tag-span tag) 0 :div)))])))
+          (assoc (tag-span tag) 0 :div.tag-text)))])))
 
 (defn main-panel []
   [:div#main-panel

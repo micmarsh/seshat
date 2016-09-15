@@ -17,7 +17,6 @@
 
 (defroutes routes*
   (GET "/" [] (resource-response "index.html" {:root "public"}))
-  (GET "/hello" [] "\"nope\"")
   (GET "/query" [] {:body fake-data
                     :status 200
                     :headers {"content-type" "application/edn"}})

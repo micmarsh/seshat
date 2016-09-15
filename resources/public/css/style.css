@@ -1,0 +1,17 @@
+#app {
+    display: flex;
+    justify-content: center;
+    font-size: 20px;
+}
+
+#search-box {
+    margin-bottom: 20px;
+}
+
+.note-content {
+    border-bottom: 1px solid #ddd;
+}
+
+.tag-text {
+    color: #00e;
+}

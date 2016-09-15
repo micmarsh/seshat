@@ -15,7 +15,9 @@
             notes))
 
 (defn filter-tags [tags notes]
-  (reduce (fn [notes tag] (filter (partial contains? tag) notes)) notes tags))
+  (reduce (fn [notes tag]
+            (filter (partial contains? tag) notes))
+          notes tags))
 
 (defn filter-text [text notes]
   (filter

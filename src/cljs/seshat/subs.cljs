@@ -19,4 +19,9 @@
 (re-frame/reg-sub
  :selected-tags
  :<- [:display]
- (fn [display] (->  display :display/filters :filters/tags)))
+ (fn [display] (-> display :display/filters :filters/tags)))
+
+(re-frame/reg-sub
+ :currently-editing
+ :<- [:display]
+ (fn [display] (:display/currently-editing display)))

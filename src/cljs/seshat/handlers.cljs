@@ -78,6 +78,34 @@
  (fn [db [_ note]]
    (db/edit-note db note)))
 
+(re-frame/reg-event-db
+ :start-editing-note
+ (fn [db [_ note]]
+   (assoc-in db [:data/display :display/currently-editing] note)))
+
+(re-frame/reg-event-db
+ :cancel-editing-note
+ (fn [db [_ note]]
+   (assoc-in db [:data/display :display/currently-editing] nil)))
+
+(re-frame/reg-event-fx
+ :edited-note
+ (fn [_ [_ new-text n]]
+   (let [note (assoc n :text new-text)]
+     {:dispatch-n [[:update-local-note note]
+                   [:remote-edit-note note]]})))
+
+(re-frame/reg-event-fx
+ :remote-edit-note
+ (fn [_ [_ note]]
+   {:http-xhrio {:method :put
+                 :uri (str "/command/edit_note/" (:id note))
+                 :headers {"content-type" "application/edn"}
+                 :body (pr-str note)
+                 :response-format (edn-response-format)
+                 :on-success [:update-local-note]
+                 :on-failure [:FIXME-generic-fail]}}))
+
 ;; DEBUGGING
 (re-frame/reg-event-db
  :print-data
@@ -85,4 +113,5 @@
    (println (:data/notes db))
    db))
 
-(js/setInterval #(re-frame/dispatch [:print-data]) 5000)
+;(js/setInterval #(re-frame/dispatch [:print-data]) 10000)
+

@@ -6,7 +6,8 @@
          :display #:display{:notes []
                             :tags []
                             :filters #:filters{:tags #{}
-                                               :search ""}}})
+                                               :search ""}
+                            :currently-editing nil}})
 
 (defn initial-data [] default-db)
 

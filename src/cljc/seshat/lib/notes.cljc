@@ -15,6 +15,11 @@
     (or (apply c/== (map #(:id % (swap! fake-ids dec)) notes))
         (apply = (map #(:temp-id % (gensym)) notes)))))
 
+(defn id [{:keys [id temp-id] :as note}]
+  (or id temp-id
+      (throw (ex-info "note data has no valid id"
+                      {:data note}))))
+
 ;; Collection-based
 (defn unique-tags [notes]
   (sequence (comp (mapcat tags)

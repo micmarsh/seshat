@@ -1,9 +1,16 @@
 (ns seshat.views
   (:require [re-frame.core :as re-frame]
+            [reagent.core :as r]
             [clojure.string :as str]))
 
 (defn input-text [event]
   (-> event .-target .-value))
+
+(defn ctrl? [event]
+  (== 17 (.-keyCode event)))
+
+(defn enter? [event]
+  (== 13 (.-keyCode event)))
 
 (defn tag-span [tag]
   [:span.tag-text
@@ -21,17 +28,40 @@
          (map display-word)
          (interpose " "))))
 
+(defn clear-input [event]
+  (-> event
+      (.-target)
+      (.-value)
+      (set! ""))
+  false)
+
+(defn submit-text [event]
+  (println (input-text event))
+  (re-frame/dispatch [:new-note (input-text event)])
+  (clear-input event))
+
+(defn new-note-box []
+  (fn []
+    [:div#new-note-entry
+     [:span "New Note: "]
+     [:textarea
+      {:on-key-up #(when (and (enter? %) (not (empty? (input-text %))))
+                     (submit-text %))}]]))
+
+
 (defn notes-list []
   (let [notes (re-frame/subscribe [:notes-list])]
     (fn []
       [:div#notes-list
        [:h2 "Notes"]
+       [new-note-box]
        [:div#search-box
         [:span "Search: "]
         [:input {:on-change #(re-frame/dispatch [:search (input-text %)])}]]
        (doall
         (for [note @notes]
-          [:div.note-content {:key (:id note)}
+          [:div.note-content {:key (:id note (:temp-id note))}
+           ;; TODO abstract that^ shit into a nice cljc lib
            (display-note (:text note))]))])))
 
 (defn tags-list []

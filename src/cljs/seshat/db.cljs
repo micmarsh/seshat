@@ -45,3 +45,20 @@
     (-> db
         (assoc :data/notes new-notes)
         (update :data/display update-display new-notes))))
+
+(defn update-existing-note [existing-notes note]
+  (let [note? (partial notes/== note)]
+    (if (first (filter note? existing-notes))
+      (->> existing-notes
+           (remove note?)
+           (cons (dissoc note :temp-id))
+           (vec))
+      (throw (ex-info "Note not found locally!"
+                      {:note note
+                       :local-data existing-notes})))))
+
+(defn edit-note [db note]
+  (let [new-notes (update-existing-note (:data/notes db) note)]
+    (-> db
+        (assoc :data/notes new-notes)
+        (update :data/display update-display new-notes))))

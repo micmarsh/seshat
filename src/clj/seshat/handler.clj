@@ -64,7 +64,7 @@
                  :body (prn-str {:deleted 1})
                  :headers {"content-type" "application/edn"}})
               {:status 404
-             :body "that stuff doesn't exist, maybe u already deleted?\n"})))
+               :body "that stuff doesn't exist, maybe u already deleted?\n"})))
   (resources "/"))
 
 (def routes (wrap-edn-params routes*))

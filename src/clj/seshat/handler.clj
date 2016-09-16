@@ -29,7 +29,7 @@
           (locking fake-database
             (if (every? (partial contains? new-note) [:temp-id :text])
               (let [with-id (assoc new-note :id (swap! fake-id-gen inc))]
-                (swap! fake-database conj with-id)
+                (swap! fake-database conj (dissoc with-id :temp-id))
                 {:body (prn-str with-id)
                  :status 201
                  :headers {"content-type" "application/edn"}})

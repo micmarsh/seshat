@@ -77,3 +77,12 @@
  :update-local-note
  (fn [db [_ note]]
    (db/edit-note db note)))
+
+;; DEBUGGING
+(re-frame/reg-event-db
+ :print-data
+ (fn [db _]
+   (println (:data/notes db))
+   db))
+
+(js/setInterval #(re-frame/dispatch [:print-data]) 5000)

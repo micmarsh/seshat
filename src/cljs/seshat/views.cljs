@@ -32,6 +32,15 @@
      [:span "Search: "]
      [:input {:on-change #(re-frame/dispatch [:search (util/input-text %)])}]]))
 
+(defn note-buttons [note]
+  (fn []
+    [:div.note-buttons
+     [:button {:on-click #(re-frame/dispatch [:start-editing-note note])}
+      "edit"]
+     " "
+     [:button {:on-click #(re-frame/dispatch [:delete-note note])}
+      "delete"]]))
+
 (defn notes-list []
   (let [notes (re-frame/subscribe [:notes-list])]
     (fn []
@@ -44,9 +53,7 @@
         (for [note @notes]
           [:div.note-content {:key (notes/id note)}
            (util/display-note (:text note))
-           " "
-           [:button {:on-click #(re-frame/dispatch [:start-editing-note note])}
-            "Edit"]]))])))
+           [note-buttons note]]))])))
 
 (defn tags-list []
   (let [tags (re-frame/subscribe [:tags-list])

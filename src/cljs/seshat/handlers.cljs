@@ -21,12 +21,6 @@
                 :on-failure [:FIXME-generic-fail]}}))
 
 (re-frame/reg-event-fx
- :FIXME-generic-fail
- (fn [fail _]
-   (println fail)
-   {}))
-
-(re-frame/reg-event-fx
  :query-result
  (fn [_ [_ notes]]
    {:dispatch-n (map (partial vector :add-local-note) notes)}))
@@ -105,6 +99,40 @@
                  :response-format (edn-response-format)
                  :on-success [:update-local-note]
                  :on-failure [:FIXME-generic-fail]}}))
+
+(re-frame/reg-event-fx
+ :delete-note
+ (fn [_ [_ note]]
+   {:dispatch-n [[:delete-local-note note]
+                 [:remote-delete-note note]]}))
+
+(re-frame/reg-event-db
+ :delete-local-note
+ (fn [db [_ note]]
+   (db/delete-note db note)))
+
+(re-frame/reg-event-fx
+ :remote-delete-note
+ (fn [_ [_ note]]
+   {:http-xhrio {:method :delete
+                 :uri (str "/command/delete_note/" (:id note))
+                 :body {}
+                 :headers {"content-type" "application/edn"}
+                 :response-format (edn-response-format)
+                 :on-success [:FIXME-generic-success]
+                 :on-failure [:FIXME-generic-fail]}}))
+
+(re-frame/reg-event-fx
+ :FIXME-generic-fail
+ (fn [fail _]
+   (println "fail" (:event fail))
+   {}))
+
+(re-frame/reg-event-fx
+ :FIXME-generic-success
+ (fn [succ _]
+   (println "success" (:event succ))
+   {}))
 
 ;; DEBUGGING
 (re-frame/reg-event-db

@@ -10,8 +10,10 @@
   (c/contains? (set (tags note)) tag))
 
 (defn == [& notes]
-  (or (apply c/== (map #(:id % (gensym)) notes))
-      (apply = (map #(:temp-id % (gensym)) notes))))
+  (let [fake-ids (atom 0)]
+    ;; ^ generate fake ids so multiple nil :ids don't cause false match
+    (or (apply c/== (map #(:id % (swap! fake-ids dec)) notes))
+        (apply = (map #(:temp-id % (gensym)) notes)))))
 
 ;; Collection-based
 (defn unique-tags [notes]

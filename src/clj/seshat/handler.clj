@@ -44,14 +44,14 @@
     p/EditNote
     (edit-note! [this id text]
       (locking fake-database
-        (let [note (p/read-note this id)
-              updated (assoc note :text text :updated (now))]        
-          (swap! fake-database (fn [data]
-                                 (->> data
-                                      (remove (comp #{id} :id))
-                                      (cons updated)
-                                     (vec))))
-          updated)))
+        (when-let [note (p/read-note this id)]
+          (let [updated (assoc note :text text :updated (now))]
+            (swap! fake-database (fn [data]
+                                   (->> data
+                                        (remove (comp #{id} :id))
+                                        (cons updated)
+                                        (vec))))
+            updated))))
     p/DeleteNote
     (delete-note! [_ id]
       (locking fake-database
@@ -82,24 +82,22 @@
        (locking fake-database
          (if (contains? (:edn-params request) :text)
            (let [id (Integer/parseInt id)]
-             (if (some? (p/read-note db id))
-               (let [updated (p/edit-note! db id (:text (:edn-params request)))]
-                 {:status 200
-                  :body (prn-str updated)
-                  :headers {"content-type" "application/edn"}})
+             (if-let [updated (p/edit-note! db id (:text (:edn-params request)))]
+               {:status 200
+                :body (prn-str updated)
+                :headers {"content-type" "application/edn"}}
                {:status 404
                 :body "that stuff doesn't exist\n"}))
            {:status 400
             :body "ur data sux\n"})))
   (DELETE "/command/delete_note/:id" [id :as request]
           (locking fake-database
-            (let [id (Integer/parseInt id)]
-              (if (some? (p/read-note db id))
-                (do
-                  (let [deleted (p/delete-note! db id)]
-                    {:status 200
-                     :body (prn-str deleted)
-                     :headers {"content-type" "application/edn"}}))
+            (let [id (Integer/parseInt id)
+                  deleted (p/delete-note! db id)]
+              (if (pos? (:deleted deleted))
+                {:status 200
+                 :body (prn-str deleted)
+                 :headers {"content-type" "application/edn"}}
                 {:status 404
                  :body "that stuff doesn't exist, maybe u already deleted?\n"}))))
   (resources "/"))

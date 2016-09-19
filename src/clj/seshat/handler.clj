@@ -1,7 +1,7 @@
 (ns seshat.handler
   (:require [compojure.core :refer [GET POST PUT DELETE defroutes]]
             [compojure.route :refer [resources]]
-            [ring.util.response :refer [resource-response]]
+            [ring.util.response :as resp]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.middleware.edn :refer [wrap-edn-params]]
             [seshat.protocols :as p]))
@@ -64,45 +64,53 @@
 
 (def db fake-impl)
 
+;; General purpose Middleware: TODO: move to new ns, appropriate
+;; naming is pretty obvi.
+(defn wrap-edn-response [handler]
+  (fn [r]
+    (-> (handler r)
+        (update :body prn-str)
+        (resp/content-type "application/edn"))))
+
+;; function that should be in ring
+(def bad-request (partial hash-map :status 400 :body))
+
+(defroutes note-routes
+  (GET "/query" [] (resp/response @fake-database))
+
+  (POST "/command/new_note" [temp-id text]
+        (if (and (some? temp-id) (some? text))
+          (let [note (p/new-note! db text)
+                result (assoc note :temp-id temp-id)]
+            (resp/created "/command/new_note" result))
+          (bad-request "ur data is junk")))
+
+  (PUT "/command/edit_note/:id" [id text]
+       (if (some? text)
+         (let [id (Integer/parseInt id)]
+           (if-let [updated (p/edit-note! db id text)]
+             (resp/response updated)
+             (resp/not-found "that stuff doesn't exist")))
+         (bad-request "ur data sux")))
+
+  (DELETE "/command/delete_note/:id" [id]
+          (let [id (Integer/parseInt id)
+                deleted (p/delete-note! db id)]
+            (if (pos? (:deleted deleted))
+              (resp/response deleted)
+              (resp/not-found "that stuff doesn't exist, maybe u already deleted?")))))
+
+(defroutes index-route
+  (GET "/" [] (resp/resource-response "index.html" {:root "public"})))
+
 (defroutes routes*
-  (GET "/" [] (resource-response "index.html" {:root "public"}))
-  (GET "/query" [] {:body (pr-str @fake-database)
-                    :status 200
-                    :headers {"content-type" "application/edn"}})
-  (POST "/command/new_note" [:as request]
-        (let [new-note (:params request)]
-          (if (every? (partial contains? new-note) [:temp-id :text])
-            (let [note (p/new-note! db (:text new-note))]
-              {:body (prn-str (assoc note :temp-id (:temp-id new-note)))
-               :status 201
-               :headers {"content-type" "application/edn"}})
-            {:body "ur data is junk\n"
-             :status 400})))
-  (PUT "/command/edit_note/:id" [id :as request]
-       (locking fake-database
-         (if (contains? (:edn-params request) :text)
-           (let [id (Integer/parseInt id)]
-             (if-let [updated (p/edit-note! db id (:text (:edn-params request)))]
-               {:status 200
-                :body (prn-str updated)
-                :headers {"content-type" "application/edn"}}
-               {:status 404
-                :body "that stuff doesn't exist\n"}))
-           {:status 400
-            :body "ur data sux\n"})))
-  (DELETE "/command/delete_note/:id" [id :as request]
-          (locking fake-database
-            (let [id (Integer/parseInt id)
-                  deleted (p/delete-note! db id)]
-              (if (pos? (:deleted deleted))
-                {:status 200
-                 :body (prn-str deleted)
-                 :headers {"content-type" "application/edn"}}
-                {:status 404
-                 :body "that stuff doesn't exist, maybe u already deleted?\n"}))))
+  index-route
+  (wrap-edn-response note-routes)
   (resources "/"))
 
-(def routes (wrap-edn-params routes*))
+(def routes
+  (-> routes*
+      (wrap-edn-params)))
 
 (def dev-handler (-> #'routes wrap-reload))
 

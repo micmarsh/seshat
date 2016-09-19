@@ -9,7 +9,11 @@
 (re-frame/reg-sub
  :notes-list
  :<- [:display]
- (fn [display] (:display/notes display)))
+ (fn [display]
+   (->> display
+        (:display/notes)
+        (sort-by :updated)
+        (reverse))))
 
 (re-frame/reg-sub
  :tags-list

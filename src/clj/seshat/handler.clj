@@ -14,10 +14,10 @@
 
 (def bad-request (partial hash-map :status 400 :body))
 
-(defroutes query-route
+(def query-route
   (GET "/query" [] (resp/response (p/query db {}))))
 
-(defroutes new-note-route
+(def new-note-route
   (POST "/command/new_note" [temp-id text]
         (if (and (some? temp-id) (some? text))
           (let [note (p/new-note! db text)
@@ -39,7 +39,7 @@
               (resp/response deleted)
               (resp/not-found "that stuff doesn't exist, maybe u already deleted?")))))
 
-(defroutes import-routes
+(def import-route
   (POST "/import/fetchnotes" [upload-file :as r]
         (let [notes (keep (partial p/import-note! db)
                           (f/extract-notes upload-file))]
@@ -64,7 +64,7 @@
 
 (defmethod compile-handler clojure.lang.APersistentVector
   [handlers]
-  (let [compiled (mapv compile-handler handler)]
+  (let [compiled (mapv compile-handler handlers)]
     (fn [request]
       (some #(% request) compiled))))
 
@@ -72,20 +72,20 @@
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
 
-(def refactor-yo
+(def routes-data
   [(GET "/" [] (resp/resource-response "index.html" {:root "public"}))
    {:middleware [m/wrap-edn-response
                  [m/wrap-clean-response allowed-response-keys]]
     :handler [{:middleware [wrap-edn-params]
                :handler [new-note-route
-                         query-route ;; again, same as above
+                         query-route
                          {:middleware [[wrap-routes m/wrap-cast-id]]
                           :handler resource-command-routes}]}                          
               {:middleware [wrap-multipart-params]
-               :handler import-routes}]}               
+               :handler import-route}]}
    (resources "/")])
 
-(defroutes routes (compile-handler refactor-yo))
+(defroutes routes (compile-handler routes-data))
 
 (def dev-handler (-> #'routes wrap-reload))
 

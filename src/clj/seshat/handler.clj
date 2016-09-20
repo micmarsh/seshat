@@ -25,7 +25,7 @@
             (resp/created "/command/new_note" result))
           (bad-request "ur data is junk"))))
 
-(defroutes resource-routes
+(defroutes resource-command-routes
   (PUT "/command/edit_note/:id" [id text]
        (if (some? text)
          (if-let [updated (p/edit-note! db id text)]
@@ -45,78 +45,48 @@
                           (f/extract-notes upload-file))]
           (resp/response notes))))
 
+(defmulti compile-handler type)
+
+(defmethod compile-handler clojure.lang.IFn [h] h)
+
+(defn wrap-handler [handler middleware]
+  (if (vector? middleware)
+    (apply (first middleware) handler (rest middleware))
+    (middleware handler)))
+
+(defmethod compile-handler clojure.lang.APersistentMap
+  [{:keys [middleware handler]
+    :or {middleware []}}]
+  (assert (some? handler))
+  (reduce wrap-handler
+          (compile-handler handler)
+          (reverse middleware)))
+
+(defmethod compile-handler clojure.lang.APersistentVector
+  [handlers]
+  (let [compiled (mapv compile-handler handler)]
+    (fn [request]
+      (some #(% request) compiled))))
+
 (def ^:const allowed-response-keys
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
 
-(defroutes routes
-  (GET "/" [] (resp/resource-response "index.html" {:root "public"}))
-  (-> note-routes
-      (wrap-routes m/wrap-cast-id)
-      (wrap-edn-params)
-      (m/wrap-clean-response allowed-response-keys)
-      (m/wrap-edn-response))
-  (-> import-routes
-      (wrap-multipart-params)
-      (m/wrap-clean-response allowed-response-keys)
-      (m/wrap-edn-response))
-  (resources "/"))
+(def refactor-yo
+  [(GET "/" [] (resp/resource-response "index.html" {:root "public"}))
+   {:middleware [m/wrap-edn-response
+                 [m/wrap-clean-response allowed-response-keys]]
+    :handler [{:middleware [wrap-edn-params]
+               :handler [new-note-route
+                         query-route ;; again, same as above
+                         {:middleware [[wrap-routes m/wrap-cast-id]]
+                          :handler resource-command-routes}]}                          
+              {:middleware [wrap-multipart-params]
+               :handler import-routes}]}               
+   (resources "/")])
+
+(defroutes routes (compile-handler refactor-yo))
 
 (def dev-handler (-> #'routes wrap-reload))
 
 (def handler routes)
-
-(comment
-  (def routes-data
-    {:middleware [wrap-all-of-everything]
-     :handler [{:handler (GET "/" [] (resp/resource-response "index.html" {:root "public"}))}
-               {:middleware [m/wrap-edn-response
-                             [m/wrap-clean-response allowed-response-keys]
-                             wrap-edn-params
-                             [wrap-routes m/wrap-cast-id]]
-                :handler note-routes}
-               {:middleware [m/wrap-edn-response
-                             [m/wrap-clean-response allowed-response-keys]
-                             wrap-multipart-params]
-                :handler import-routes}
-               (resources "/") ;; functionally identiasl to the above
-               ]})
-
-  (def refactor-yo
-    {:middleware [wrap-all-of-everything]
-     :handler [{:handler (GET "/" [] (resp/resource-response "index.html" {:root "public"}))}
-               {:middleware [m/wrap-edn-response
-                             [m/wrap-clean-response allowed-response-keys]]
-                :handler [{:middleware [wrap-edn-params]
-                           :handler [{:handler new-note-route}
-                                     query-route ;; again, same as above
-                                     {:middleware [[wrap-routes m/wrap-cast-id]]
-                                      :handler resource-routes}]}                          
-                          {:middleware [wrap-multipart-params]
-                           :handler import-routes}]}               
-               (resources "/")]})
-
-  (defmulti compile-handler type)
-
-  (defmethod compile-handler clojure.lang.IFn
-    [handler]
-    handler)
-
-  (defn wrap-handler [handler middleware]
-    (if (vector? middleware)
-      (apply (first middleware) handler (rest middleware))
-      (middleware handler)))
-  
-  (defmethod compile-handler clojure.lang.APersistentMap
-    [{:keys [middleware handler]
-      :or {middleware []}}]
-    (assert (some? handler))
-    (reduce wrap-handler (compile-handler handler) middleware))
-
-  (defmethod compile-handler clojure.lang.APersistentVector
-    [handlers]
-    (fn [request]
-      (->> handlers
-           (map compile-handler)
-           (some #(% request)))))
-  )

@@ -1,4 +1,4 @@
-(ns seshat.protocols)
+(ns seshat.database.protocols)
 
 (defprotocol NewNote
   (new-note! [db text]
@@ -30,3 +30,6 @@
     "Assigns a new id to the given data and stores it in the given database.
      Returns same result as NewNote, or nil if can determine note has already been
      imported"))
+
+(defprotocol QueryNotes
+  (query [db query]))

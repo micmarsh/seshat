@@ -15,3 +15,7 @@
 .tag-text {
     color: #00e;
 }
+
+#uploading-error-message {
+    color: red;
+}

@@ -8,7 +8,6 @@
               [seshat.config :as config]
               [day8.re-frame.http-fx]))
 
-
 (defn dev-setup []
   (when config/debug?
     (enable-console-print!)

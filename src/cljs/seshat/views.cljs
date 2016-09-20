@@ -78,20 +78,30 @@
 
 (defn upload-file [element-id]
   (let [element (.getElementById js/document element-id)]
-    (re-frame/dispatch [:upload-file (file-data element)])))
+    (re-frame/dispatch [:upload-file (file-data element)])
+    (set! (.-value element) nil)
+    false))
 
 (def ^:const file-element "upload-file")
 
 (defn uploader []
-  [:div
-   [:h2 "Import"]
-   [:form#upload-form {:enc-type "multipart/form-data"}
-    [:label "Upload Filename: "]
-    [:input
-     {:id file-element
-      :type "file"
-      :name "upload-file"}]]
-   [:button {:on-click #(upload-file file-element)} "Upload"]])
+  (let [uploading? (re-frame/subscribe [:currently-uploading])
+        error? (re-frame/subscribe [:upload-error])]
+    (fn []
+      [:div
+       [:h2 "Import"]
+       (if @uploading?
+         [:div#uploading-message "Uploading..."]
+         [:div#uploader {}
+          (when @error?
+            [:div [:span#uploading-error-message "Something broke"]])
+          [:form#upload-form {:enc-type "multipart/form-data"}
+           [:label "Upload Filename: "]
+           [:input
+            {:id file-element
+             :type "file"
+             :name "upload-file"}]]
+          [:button {:on-click #(upload-file file-element)} "Upload"]])])))
 
 (defn main-panel []
   [:div#main-panel

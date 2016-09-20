@@ -7,7 +7,9 @@
                             :tags []
                             :filters #:filters{:tags #{}
                                                :search ""}
-                            :currently-editing nil}})
+                            :currently-editing nil
+                            :currently-uploading false
+                            :upload-error false}})
 
 (defn initial-data [] default-db)
 

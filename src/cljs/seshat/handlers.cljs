@@ -125,13 +125,33 @@
 
 (re-frame/reg-event-fx
  :upload-file
- (fn [_ [_ file]]
+ (fn [fx [_ file]]
    {:http-xhrio {:method :post
                  :uri "/import/fetchnotes"
                  :body file
                  :response-format (edn-response-format)
-                 :on-success [:query-result]
-                 :on-failure [:FIXME-generic-fail]}}))
+                 :on-success [:upload-success]
+                 :on-failure [:upload-failure]}
+    :db (assoc-in (:db fx) [:data/display :display/currently-uploading] true)}))
+
+(re-frame/reg-event-fx
+ :upload-success
+ (fn [fx [_ result]]
+   {:dispatch [:query-result result]
+    :db (assoc-in (:db fx) [:data/display :display/currently-uploading] false)}))
+
+(re-frame/reg-event-fx
+ :upload-failure
+ (fn [fx _]
+   {:db (-> (:db fx)
+            (assoc-in [:data/display :display/currently-uploading] false)
+            (assoc-in [:data/display :display/upload-error] true))
+    :dispatch-later [{:ms 5000 :dispatch [:clear-upload-error]}]}))
+
+(re-frame/reg-event-db
+ :clear-upload-error
+ (fn [db _]
+   (assoc-in db [:data/display :display/upload-error] false)))
 
 (re-frame/reg-event-fx
  :FIXME-generic-fail

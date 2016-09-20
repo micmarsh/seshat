@@ -29,3 +29,15 @@
  :currently-editing
  :<- [:display]
  (fn [display] (:display/currently-editing display)))
+
+(re-frame/reg-sub
+ :currently-uploading
+ :<- [:display]
+ (fn [display]
+   (:display/currently-uploading display)))
+
+(re-frame/reg-sub
+ :upload-error
+ :<- [:display]
+ (fn [display]
+   (:display/upload-error display)))

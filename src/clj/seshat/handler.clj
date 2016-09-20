@@ -40,7 +40,8 @@
 (defroutes import-routes
   (POST "/import/fetchnotes" [upload-file :as r]
         (try
-          (let [notes (keep (partial p/import-note! db)
+          (bad-request "lol broke")
+          #_(let [notes (keep (partial p/import-note! db)
                             (f/extract-notes upload-file))]
             (resp/response notes))
           (catch clojure.lang.ExceptionInfo ex

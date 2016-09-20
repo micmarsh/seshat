@@ -71,7 +71,30 @@
         (for [tag @tags]
           (assoc (util/tag-span tag) 0 :div.tag-text)))])))
 
+(defn file-data [element]
+  (let [name (.-name element)
+        file (aget (.-files element) 0)]
+    (doto (js/FormData.) (.append name file))))
+
+(defn upload-file [element-id]
+  (let [element (.getElementById js/document element-id)]
+    (re-frame/dispatch [:upload-file (file-data element)])))
+
+(def ^:const file-element "upload-file")
+
+(defn uploader []
+  [:div
+   [:h2 "Import"]
+   [:form#upload-form {:enc-type "multipart/form-data"}
+    [:label "Upload Filename: "]
+    [:input
+     {:id file-element
+      :type "file"
+      :name "upload-file"}]]
+   [:button {:on-click #(upload-file file-element)} "Upload"]])
+
 (defn main-panel []
   [:div#main-panel
    [notes-list]
-   [tags-list]])
+   [tags-list]
+   [uploader]])

@@ -1,11 +1,17 @@
 (ns seshat.handler
-  (:require [compojure.core :refer [GET POST PUT DELETE defroutes]]
+  (:require [compojure.core :refer [GET POST PUT DELETE defroutes wrap-routes]]
             [compojure.route :refer [resources]]
             [ring.util.response :as resp]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.middleware.edn :refer [wrap-edn-params]]
-            [seshat.protocols :as p]))
+            [ring.middleware.multipart-params :refer [wrap-multipart-params]]
+            [seshat.protocols :as p]
 
+            [cheshire.core :as json]
+            [clojure.java.io :as io]
+            [clojure
+             [string :as str]
+             [set :refer [rename-keys]]]))
 
 ;; TODO this fake data stuff goes somewhere else, get injected
 ;; somewhere around main fn (and here, due to wrap-reload action, but
@@ -60,7 +66,14 @@
                                  (->> data
                                       (remove (comp #{id} :id))          
                                       (vec))))
-          {:deleted (- (count before) (count @fake-database))})))))
+          {:deleted (- (count before) (count @fake-database))})))
+    p/ImportNote
+    (import-note! [_ {id :fetchnotes/id :as data}]
+      (locking fake-database
+        (when (empty? (filter (comp #{id} :fetchnotes/id) @fake-database))
+          (let [note (assoc data :id (swap! fake-id-gen inc))]
+            (swap! fake-database conj note)
+            note))))))
 
 (def db fake-impl)
 
@@ -68,9 +81,42 @@
 ;; naming is pretty obvi.
 (defn wrap-edn-response [handler]
   (fn [r]
-    (-> (handler r)
-        (update :body prn-str)
-        (resp/content-type "application/edn"))))
+    (some-> (handler r)
+            (update :body prn-str)
+            (resp/content-type "application/edn"))))
+
+(defmulti keep-keys
+  (fn [data keys] (type data)))
+
+(defmethod keep-keys clojure.lang.APersistentVector
+  [seq keys]
+  (mapv #(keep-keys % keys) seq))
+
+(defmethod keep-keys clojure.lang.LazySeq
+  [seq keys]
+  (map #(keep-keys % keys) seq))
+
+(defmethod keep-keys clojure.lang.APersistentMap
+  [map keys]
+  (select-keys map keys))
+
+(defmethod keep-keys :default
+  [data _]
+  (println "no dispatch result for" data)
+  data)
+
+(defn wrap-clean-response
+  "TODO this is junk, should be handled at some other layer, shareable between query and commands"
+  [handler keys]
+  (fn [r]
+    (some-> (handler r)
+            (update :body keep-keys keys))))
+
+(defn wrap-cast-id [handler]
+  (fn [req]
+    (cond-> req
+      (string? (:id (:params req))) (update-in [:params :id] #(Integer/parseInt %))
+      true (handler))))
 
 ;; function that should be in ring
 (def bad-request (partial hash-map :status 400 :body))
@@ -84,18 +130,16 @@
                 result (assoc note :temp-id temp-id)]
             (resp/created "/command/new_note" result))
           (bad-request "ur data is junk")))
-
+  
   (PUT "/command/edit_note/:id" [id text]
        (if (some? text)
-         (let [id (Integer/parseInt id)]
-           (if-let [updated (p/edit-note! db id text)]
-             (resp/response updated)
-             (resp/not-found "that stuff doesn't exist")))
+         (if-let [updated (p/edit-note! db id text)]
+           (resp/response updated)
+           (resp/not-found "that stuff doesn't exist"))
          (bad-request "ur data sux")))
-
+  
   (DELETE "/command/delete_note/:id" [id]
-          (let [id (Integer/parseInt id)
-                deleted (p/delete-note! db id)]
+          (let [deleted (p/delete-note! db id)]
             (if (pos? (:deleted deleted))
               (resp/response deleted)
               (resp/not-found "that stuff doesn't exist, maybe u already deleted?")))))
@@ -103,14 +147,93 @@
 (defroutes index-route
   (GET "/" [] (resp/resource-response "index.html" {:root "public"})))
 
-(defroutes routes*
-  index-route
-  (wrap-edn-response note-routes)
-  (resources "/"))
+;; Importer stuff, likely headed on over to "fechnotes" branded ns
+(defn extension [name]
+  (some-> name
+          (str/split #"\.")
+          (last)))
 
-(def routes
-  (-> routes*
-      (wrap-edn-params)))
+(def dispatch-read-file (comp extension :filename))
+
+(defmulti read-file dispatch-read-file )
+
+(defmethod read-file "json"
+  [{file :tempfile}]
+  (-> file
+      (io/reader)
+      (json/parse-stream true)))
+
+(defn text->map [text]
+  (into { }
+        (for [entry (str/split text #"\n")
+              :let [[key & entry] (str/split entry #": ")]]
+          [(keyword key)
+           ;; uses json to un-double-encode strings
+           (json/decode (str/join ": " entry))])))
+
+(defmethod read-file "txt"
+  [{file :tempfile}]
+  (-> file
+      (slurp)
+      (str/split #"\n\n")
+      ((partial map text->map))))
+
+(defmethod read-file :default [data]
+  (throw (ex-info "Unrecognized filename extension"
+                  {:data data
+                   :dispatch-result (dispatch-read-file data)})))
+
+;; Importer stuff: pure data manip, no file/reader business
+(defn convert-keys [fetch-note]
+  (-> fetch-note
+      (select-keys [:_id :text :timestamp :created_at])
+      (rename-keys {:_id :fetchnotes/id
+                    :timestamp :updated
+                    :created_at :created})))
+
+(def ts-format
+  (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSX"))
+
+(defn parse-timestamp [timestamp]
+  (if (some? timestamp)
+    (.parse ts-format timestamp)
+    ;; should log when that happens or something
+    (now)))
+
+(defn parse-timestamps [fetch-note]
+  (into { }
+        (for [[k v] fetch-note]
+          [k (if (#{:created :updated} k)
+               (parse-timestamp v)
+               v)])))
+
+(defroutes import-routes
+  (POST "/import/fetchnotes" [upload-file :as r]
+        (try
+          (let [notes (->> upload-file
+                           (read-file)
+                           (map convert-keys)
+                           (map parse-timestamps)
+                           (keep (partial p/import-note! db)))]
+            (resp/response (format "Yay imported %d notes" (count notes))))
+          (catch clojure.lang.ExceptionInfo ex
+            (bad-request (str "Some problem " (prn-str (ex-data ex))))))))
+
+(def ^:const allowed-response-keys
+  ;; TODO this belongs elsewhere as well, not http-layer at all
+  [:id :temp-id :text :created :updated :deleted])
+
+(defroutes routes
+  index-route
+  (-> note-routes
+      (wrap-routes wrap-cast-id)
+      wrap-edn-params
+      (wrap-clean-response allowed-response-keys)
+      wrap-edn-response)
+  (-> import-routes
+      wrap-multipart-params
+      (wrap-clean-response allowed-response-keys))
+  (resources "/"))
 
 (def dev-handler (-> #'routes wrap-reload))
 

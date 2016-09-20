@@ -11,14 +11,16 @@
    {:db (db/initial-data)
     :dispatch [:pull-initial-data]}))
 
+(def ^:const full-query-request
+  {:method :get
+   :uri "/query"
+   :response-format (edn-response-format)
+   :on-success [:query-result]
+   :on-failure [:FIXME-generic-fail]})
+
 (re-frame/reg-event-fx
  :pull-initial-data
- (constantly
-  {:http-xhrio {:method :get
-                :uri "/query"
-                :response-format (edn-response-format)
-                :on-success [:query-result]
-                :on-failure [:FIXME-generic-fail]}}))
+ (constantly {:http-xhrio full-query-request}))
 
 (re-frame/reg-event-fx
  :query-result
@@ -118,6 +120,16 @@
                  :uri (str "/command/delete_note/" (:id note))
                  :body {}
                  :headers {"content-type" "application/edn"}
+                 :response-format (edn-response-format)
+                 :on-success [:FIXME-generic-success]
+                 :on-failure [:FIXME-generic-fail]}}))
+
+(re-frame/reg-event-fx
+ :upload-file
+ (fn [_ [_ file]]
+   {:http-xhrio {:method :post
+                 :uri "/import/fetchnotes"
+                 :body file
                  :response-format (edn-response-format)
                  :on-success [:FIXME-generic-success]
                  :on-failure [:FIXME-generic-fail]}}))

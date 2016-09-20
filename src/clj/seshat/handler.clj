@@ -14,16 +14,18 @@
 
 (def bad-request (partial hash-map :status 400 :body))
 
-(defroutes note-routes
-  (GET "/query" [] (resp/response (p/query db {})))
+(defroutes query-route
+  (GET "/query" [] (resp/response (p/query db {}))))
 
+(defroutes new-note-route
   (POST "/command/new_note" [temp-id text]
         (if (and (some? temp-id) (some? text))
           (let [note (p/new-note! db text)
                 result (assoc note :temp-id temp-id)]
             (resp/created "/command/new_note" result))
-          (bad-request "ur data is junk")))
-  
+          (bad-request "ur data is junk"))))
+
+(defroutes resource-routes
   (PUT "/command/edit_note/:id" [id text]
        (if (some? text)
          (if-let [updated (p/edit-note! db id text)]
@@ -39,13 +41,9 @@
 
 (defroutes import-routes
   (POST "/import/fetchnotes" [upload-file :as r]
-        (try
-          (bad-request "lol broke")
-          #_(let [notes (keep (partial p/import-note! db)
-                            (f/extract-notes upload-file))]
-            (resp/response notes))
-          (catch clojure.lang.ExceptionInfo ex
-            (bad-request (str "Some problem " (prn-str (ex-data ex))))))))
+        (let [notes (keep (partial p/import-note! db)
+                          (f/extract-notes upload-file))]
+          (resp/response notes))))
 
 (def ^:const allowed-response-keys
   ;; TODO this belongs elsewhere as well, not http-layer at all
@@ -67,3 +65,58 @@
 (def dev-handler (-> #'routes wrap-reload))
 
 (def handler routes)
+
+(comment
+  (def routes-data
+    {:middleware [wrap-all-of-everything]
+     :handler [{:handler (GET "/" [] (resp/resource-response "index.html" {:root "public"}))}
+               {:middleware [m/wrap-edn-response
+                             [m/wrap-clean-response allowed-response-keys]
+                             wrap-edn-params
+                             [wrap-routes m/wrap-cast-id]]
+                :handler note-routes}
+               {:middleware [m/wrap-edn-response
+                             [m/wrap-clean-response allowed-response-keys]
+                             wrap-multipart-params]
+                :handler import-routes}
+               (resources "/") ;; functionally identiasl to the above
+               ]})
+
+  (def refactor-yo
+    {:middleware [wrap-all-of-everything]
+     :handler [{:handler (GET "/" [] (resp/resource-response "index.html" {:root "public"}))}
+               {:middleware [m/wrap-edn-response
+                             [m/wrap-clean-response allowed-response-keys]]
+                :handler [{:middleware [wrap-edn-params]
+                           :handler [{:handler new-note-route}
+                                     query-route ;; again, same as above
+                                     {:middleware [[wrap-routes m/wrap-cast-id]]
+                                      :handler resource-routes}]}                          
+                          {:middleware [wrap-multipart-params]
+                           :handler import-routes}]}               
+               (resources "/")]})
+
+  (defmulti compile-handler type)
+
+  (defmethod compile-handler clojure.lang.IFn
+    [handler]
+    handler)
+
+  (defn wrap-handler [handler middleware]
+    (if (vector? middleware)
+      (apply (first middleware) handler (rest middleware))
+      (middleware handler)))
+  
+  (defmethod compile-handler clojure.lang.APersistentMap
+    [{:keys [middleware handler]
+      :or {middleware []}}]
+    (assert (some? handler))
+    (reduce wrap-handler (compile-handler handler) middleware))
+
+  (defmethod compile-handler clojure.lang.APersistentVector
+    [handlers]
+    (fn [request]
+      (->> handlers
+           (map compile-handler)
+           (some #(% request)))))
+  )

@@ -40,8 +40,9 @@
 (defroutes import-routes
   (POST "/import/fetchnotes" [upload-file :as r]
         (try
-          (let [notes (keep (partial p/import-note! db) (f/extract-notes upload-file))]
-            (resp/response (format "Yay imported %d notes" (count notes))))
+          (let [notes (keep (partial p/import-note! db)
+                            (f/extract-notes upload-file))]
+            (resp/response notes))
           (catch clojure.lang.ExceptionInfo ex
             (bad-request (str "Some problem " (prn-str (ex-data ex))))))))
 
@@ -58,7 +59,8 @@
       (m/wrap-edn-response))
   (-> import-routes
       (wrap-multipart-params)
-      (m/wrap-clean-response allowed-response-keys))
+      (m/wrap-clean-response allowed-response-keys)
+      (m/wrap-edn-response))
   (resources "/"))
 
 (def dev-handler (-> #'routes wrap-reload))

@@ -1,8 +1,7 @@
 (ns seshat.handlers
     (:require [re-frame.core :as re-frame]
               [seshat.db :as db]
-
-              [ajax.core :as ajax]
+              [seshat.config :as config]
               [ajax.edn :refer [edn-response-format]]))
 
 (re-frame/reg-event-fx
@@ -131,7 +130,7 @@
                  :uri "/import/fetchnotes"
                  :body file
                  :response-format (edn-response-format)
-                 :on-success [:FIXME-generic-success]
+                 :on-success [:query-result]
                  :on-failure [:FIXME-generic-fail]}}))
 
 (re-frame/reg-event-fx
@@ -146,12 +145,11 @@
    (println "success" (:event succ))
    {}))
 
-;; DEBUGGING
-(re-frame/reg-event-db
- :print-data
- (fn [db _]
-   (println (:data/notes db))
-   db))
-
-;(js/setInterval #(re-frame/dispatch [:print-data]) 10000)
+(when config/debug?
+  (re-frame/reg-event-db
+   :print-data
+   (fn [db _]
+     (println (:data/notes db))
+     db))
+  #_(js/setInterval #(re-frame/dispatch [:print-data]) 10000))
 

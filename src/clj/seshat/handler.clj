@@ -1,6 +1,7 @@
 (ns seshat.handler
   (:require [compojure.core :refer [GET POST PUT DELETE defroutes wrap-routes]]
             [compojure.route :refer [resources]]
+            [ring.handler :as handler]
             [ring.util.response :as resp]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.middleware.edn :refer [wrap-edn-params]]
@@ -45,29 +46,6 @@
                           (f/extract-notes upload-file))]
           (resp/response notes))))
 
-(defmulti compile-handler type)
-
-(defmethod compile-handler clojure.lang.IFn [h] h)
-
-(defn wrap-handler [handler middleware]
-  (if (vector? middleware)
-    (apply (first middleware) handler (rest middleware))
-    (middleware handler)))
-
-(defmethod compile-handler clojure.lang.APersistentMap
-  [{:keys [middleware handler]
-    :or {middleware []}}]
-  (assert (some? handler))
-  (reduce wrap-handler
-          (compile-handler handler)
-          (reverse middleware)))
-
-(defmethod compile-handler clojure.lang.APersistentVector
-  [handlers]
-  (let [compiled (mapv compile-handler handlers)]
-    (fn [request]
-      (some #(% request) compiled))))
-
 (def ^:const allowed-response-keys
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
@@ -85,7 +63,7 @@
                :handler import-route}]}
    (resources "/")])
 
-(defroutes routes (compile-handler routes-data))
+(defroutes routes (handler/compile routes-data))
 
 (def dev-handler (-> #'routes wrap-reload))
 

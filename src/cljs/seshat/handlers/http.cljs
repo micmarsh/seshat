@@ -5,16 +5,15 @@
 (def ^:const +special-fail-handler+
   (keyword (gensym (gensym (gensym)))))
 
-(defn auth-failure?
-  ;; TODO THIS
-  [response] false)
+(def auth-failure? (comp #{401 403} :status))
 
 (re-frame/reg-event-fx
  +special-fail-handler+
- (fn [_ [_ {:keys [regular-event auth-event]} & response]]
-   (if (auth-failure? response)
-     {:dispatch (into auth-event response)}
-     {:dispatch (into regular-event response)})))
+ (fn [_ [_ {:keys [regular-event auth-event]} response]]
+   {:dispatch (conj (if (auth-failure? response)
+                      auth-event
+                      regular-event)
+                    response)}))
 
 (defn wrap-auth-failure
   [{:keys [on-failure on-auth-failure] :as request}]

@@ -61,8 +61,8 @@
 
 (def routes-data
   [(GET "/" [] (resp/resource-response "index.html" {:root "public"}))
-   {:middleware [[sm/wrap-session fake-session]
-                 m/wrap-edn-response
+   {:middleware [m/wrap-edn-response
+                 [sm/wrap-session fake-session]
                  [m/wrap-clean-response allowed-response-keys]]
     :handler [{:middleware [wrap-edn-params]
                :handler [new-note-route

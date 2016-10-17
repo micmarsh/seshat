@@ -15,7 +15,7 @@
         {:status 403
          :headers {}
          :body "Unauthorized session\n"})
-      {:status 400
+      {:status 403
        :headers {}
        :body "need session header\n"})))
 

@@ -2,7 +2,9 @@
     (:require [re-frame.core :as re-frame]
               [seshat.db :as db]
               [seshat.config :as config]
-              [ajax.edn :refer [edn-response-format]]))
+              [ajax.edn :refer [edn-response-format]]
+
+              [seshat.handlers.http]))
 
 (defn reg-event-re-dispatch
   ([event-key handler] (reg-event-re-dispatch event-key [] handler))
@@ -29,7 +31,7 @@
 
 (re-frame/reg-event-fx
  :pull-initial-data
- (constantly {:http-xhrio full-query-request}))
+ (constantly {:dispatch [:http full-query-request]}))
 
 (reg-event-re-dispatch
  :query-result
@@ -70,13 +72,13 @@
 (re-frame/reg-event-fx
  :remote-new-note
  (fn [_ [_ note]]
-  {:http-xhrio {:method :post
-                :uri "/command/new_note"
-                :headers {"content-type" "application/edn"}
-                :body (pr-str note)
-                :response-format (edn-response-format)
-                :on-success [:update-local-note]
-                :on-failure [:FIXME-generic-fail]}}))
+   {:dispatch [:http {:method :post
+                      :uri "/command/new_note"
+                      :headers {"content-type" "application/edn"}
+                      :body (pr-str note)
+                      :response-format (edn-response-format)
+                      :on-success [:update-local-note]
+                      :on-failure [:FIXME-generic-fail]}]}))
 
 (re-frame/reg-event-db
  :update-local-note
@@ -103,13 +105,13 @@
 (re-frame/reg-event-fx
  :remote-edit-note
  (fn [_ [_ note]]
-   {:http-xhrio {:method :put
-                 :uri (str "/command/edit_note/" (:id note))
-                 :headers {"content-type" "application/edn"}
-                 :body (pr-str note)
-                 :response-format (edn-response-format)
-                 :on-success [:update-local-note]
-                 :on-failure [:FIXME-generic-fail]}}))
+   {:dispatch [:http {:method :put
+                      :uri (str "/command/edit_note/" (:id note))
+                      :headers {"content-type" "application/edn"}
+                      :body (pr-str note)
+                      :response-format (edn-response-format)
+                      :on-success [:update-local-note]
+                      :on-failure [:FIXME-generic-fail]}]}))
 
 (reg-event-re-dispatch
  :delete-note
@@ -125,23 +127,23 @@
 (re-frame/reg-event-fx
  :remote-delete-note
  (fn [_ [_ note]]
-   {:http-xhrio {:method :delete
-                 :uri (str "/command/delete_note/" (:id note))
-                 :body {}
-                 :headers {"content-type" "application/edn"}
-                 :response-format (edn-response-format)
-                 :on-success [:FIXME-generic-success]
-                 :on-failure [:FIXME-generic-fail]}}))
+   {:dispatch [:http {:method :delete
+                      :uri (str "/command/delete_note/" (:id note))
+                      :body {}
+                      :headers {"content-type" "application/edn"}
+                      :response-format (edn-response-format)
+                      :on-success [:FIXME-generic-success]
+                      :on-failure [:FIXME-generic-fail]}]}))
 
 (re-frame/reg-event-fx
  :upload-file
  (fn [fx [_ file]]
-   {:http-xhrio {:method :post
-                 :uri "/import/fetchnotes"
-                 :body file
-                 :response-format (edn-response-format)
-                 :on-success [:upload-success]
-                 :on-failure [:upload-failure]}
+   {:dispatch [:http {:method :post
+                      :uri "/import/fetchnotes"
+                      :body file
+                      :response-format (edn-response-format)
+                      :on-success [:upload-success]
+                      :on-failure [:upload-failure]}]
     :db (assoc-in (:db fx) [:data/display :display/currently-uploading] true)}))
 
 (re-frame/reg-event-fx

@@ -4,6 +4,16 @@
               [seshat.config :as config]
               [ajax.edn :refer [edn-response-format]]))
 
+(defn reg-event-re-dispatch
+  ([event-key handler] (reg-event-re-dispatch event-key [] handler))
+  ([event-key middleware handler]
+   (re-frame/reg-event-fx
+    event-key
+    middleware
+    (fn [& args]
+      (let [events (apply handler args)]
+       {:dispatch-n (seq events)})))))
+
 (re-frame/reg-event-fx
  :initialize-db
  (fn  [_ _]
@@ -21,10 +31,10 @@
  :pull-initial-data
  (constantly {:http-xhrio full-query-request}))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :query-result
  (fn [_ [_ notes]]
-   {:dispatch-n (map (partial vector :add-local-note) notes)}))
+   (map (partial vector :add-local-note) notes)))
 
 (re-frame/reg-event-db
  :add-local-note
@@ -49,13 +59,13 @@
 (defn temporary-id []
   (gensym (gensym (gensym))))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :sync-new-note
  (fn [_ [_ note]]
    (let [temp-id (temporary-id)
          note (assoc note :temp-id temp-id)]
-     {:dispatch-n [[:add-local-note note]
-                   [:remote-new-note note]]})))
+     {:add-local-note note
+      :remote-new-note note})))
 
 (re-frame/reg-event-fx
  :remote-new-note
@@ -83,12 +93,12 @@
  (fn [db [_ note]]
    (assoc-in db [:data/display :display/currently-editing] nil)))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :edited-note
  (fn [_ [_ new-text n]]
    (let [note (assoc n :text new-text)]
-     {:dispatch-n [[:update-local-note note]
-                   [:remote-edit-note note]]})))
+     {:update-local-note note
+      :remote-edit-note note})))
 
 (re-frame/reg-event-fx
  :remote-edit-note
@@ -101,11 +111,11 @@
                  :on-success [:update-local-note]
                  :on-failure [:FIXME-generic-fail]}}))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :delete-note
  (fn [_ [_ note]]
-   {:dispatch-n [[:delete-local-note note]
-                 [:remote-delete-note note]]}))
+   {:delete-local-note note
+    :remote-delete-note note}))
 
 (re-frame/reg-event-db
  :delete-local-note

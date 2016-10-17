@@ -41,3 +41,11 @@
  :<- [:display]
  (fn [display]
    (:display/upload-error display)))
+
+(re-frame/reg-sub
+ :logged-in?
+ (fn [db]
+   (-> db
+       (:data/auth)
+       (:auth/session-id)
+       (boolean))))

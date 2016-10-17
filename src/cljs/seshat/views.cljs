@@ -103,8 +103,14 @@
              :name "upload-file"}]]
           [:button {:on-click #(upload-file file-element)} "Upload"]])])))
 
-(defn main-panel []
-  [:div#main-panel
-   [notes-list]
-   [tags-list]
-   [uploader]])
+(defn main-panel
+  []
+  (let [logged-in? (re-frame/subscribe [:logged-in?])]
+    (fn []
+      [:div#main-panel
+       (if @logged-in?
+         [:div#main-app
+          [notes-list]
+          [tags-list]
+          [uploader]]
+         [:div [:h2 "ur not logged in lol"]])])))

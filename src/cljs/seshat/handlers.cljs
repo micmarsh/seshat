@@ -27,6 +27,7 @@
    :uri "/query"
    :response-format (edn-response-format)
    :on-success [:query-result]
+   :on-auth-failure [:end-bad-session]
    :on-failure [:FIXME-generic-fail]})
 
 (re-frame/reg-event-fx
@@ -78,6 +79,7 @@
                       :body (pr-str note)
                       :response-format (edn-response-format)
                       :on-success [:update-local-note]
+                      :on-auth-failure [:end-bad-session]
                       :on-failure [:FIXME-generic-fail]}]}))
 
 (re-frame/reg-event-db
@@ -111,6 +113,7 @@
                       :body (pr-str note)
                       :response-format (edn-response-format)
                       :on-success [:update-local-note]
+                      :on-auth-failure [:end-bad-session]
                       :on-failure [:FIXME-generic-fail]}]}))
 
 (reg-event-re-dispatch
@@ -133,6 +136,7 @@
                       :headers {"content-type" "application/edn"}
                       :response-format (edn-response-format)
                       :on-success [:FIXME-generic-success]
+                      :on-auth-failure [:end-bad-session]
                       :on-failure [:FIXME-generic-fail]}]}))
 
 (re-frame/reg-event-fx
@@ -143,6 +147,7 @@
                       :body file
                       :response-format (edn-response-format)
                       :on-success [:upload-success]
+                      :on-auth-failure [:end-bad-session]
                       :on-failure [:upload-failure]}]
     :db (assoc-in (:db fx) [:data/display :display/currently-uploading] true)}))
 
@@ -164,6 +169,26 @@
  :clear-upload-error
  (fn [db _]
    (assoc-in db [:data/display :display/upload-error] false)))
+
+(re-frame/reg-event-fx
+ "FAKE-LOGIN"
+ (fn [_ [_ email password]]
+   {:dispatch 
+    (cond (= ["foo@bar.com" "bar"] [email password]) [:new-login "fakest-session"]
+          (= "foo@bad.com" email) [:new-login "bad-session-yo"]
+          :else [:FIXME-generic-fail])}))
+;; re_frame.core.dispatch(cljs.core.vector("FAKE-LOGIN", "fake", "login"))                                 
+
+(re-frame/reg-event-fx
+ :new-login
+ (fn [{:keys [db]} [_ session-id]]
+   {:db (assoc-in db [:data/auth :auth/session-id] session-id)
+    :dispatch [:pull-initial-data]}))
+
+(re-frame/reg-event-db
+ :end-bad-session
+ (fn [db _]
+   (db/initial-data)))
 
 (re-frame/reg-event-fx
  :FIXME-generic-fail

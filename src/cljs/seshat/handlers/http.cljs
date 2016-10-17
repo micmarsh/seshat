@@ -22,14 +22,16 @@
                                         {:regular-event on-failure
                                          :auth-event on-auth-failure}])))
 
+(re-frame/reg-cofx
+ ;; db use is weird, point of this is to move away from db?
+ :session
+ (fn [{:keys [db] :as coeffects}]
+   (assoc coeffects :session (-> db :data/auth :auth/session-id))))
+
 (re-frame/reg-event-fx
  :http
- ;; TODO THESE FUCKIN COFX
- (fn [{:keys [session] :as cofx}
-     [_ request]]
+ (re-frame/inject-cofx :session)
+ (fn [{:keys [session] :as cofx} [_ request]]
    {:http-xhrio (cond-> request
                   session (assoc-in [:headers "session-id"] session)
                   true (wrap-auth-failure))}))
-
-;; TODO CAN TEST THIS SeHIT, SHOULDN'T CHANGE TOO MUCH SINCE WILL JUST
-;; not add session and not 

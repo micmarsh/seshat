@@ -1,6 +1,7 @@
 (ns seshat.subs
     (:require-macros [reagent.ratom :refer [reaction]])
-    (:require [re-frame.core :as re-frame]))
+    (:require [re-frame.core :as re-frame]
+              [seshat.db.auth :as auth]))
 
 (re-frame/reg-sub
  :display
@@ -44,8 +45,4 @@
 
 (re-frame/reg-sub
  :logged-in?
- (fn [db]
-   (-> db
-       (:data/auth)
-       (:auth/session-id)
-       (boolean))))
+ (comp boolean auth/get-session))

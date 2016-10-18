@@ -4,7 +4,8 @@
               [seshat.config :as config]
               [ajax.edn :refer [edn-response-format]]
 
-              [seshat.handlers.http]))
+              [seshat.handlers.http]
+              [seshat.db.auth :as auth]))
 
 (defn reg-event-re-dispatch
   ([event-key handler] (reg-event-re-dispatch event-key [] handler))
@@ -17,10 +18,18 @@
        {:dispatch-n (seq events)})))))
 
 (re-frame/reg-event-fx
- :initialize-db
+ :initialize
  (fn  [_ _]
    {:db (db/initial-data)
-    :dispatch [:pull-initial-data]}))
+    :dispatch [:initial-login-check]}))
+
+(reg-event-re-dispatch
+ :initial-login-check
+ (re-frame/inject-cofx :session)
+ (fn  [{:keys [session]} _]
+   (if (some? session)
+     {:pull-initial-data nil} ;; TODO in future, something more cache-aware
+     {:end-bad-session nil})))
 
 (def ^:const full-query-request
   {:method :get
@@ -54,10 +63,10 @@
  (fn [db [_ text]]
    (db/search-text db text)))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :new-note
  (fn [_ [_ text]]
-   {:dispatch [:sync-new-note {:text text}]}))
+   {:sync-new-note {:text text}}))
 
 (defn temporary-id []
   (gensym (gensym (gensym))))
@@ -70,17 +79,17 @@
      {:add-local-note note
       :remote-new-note note})))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :remote-new-note
  (fn [_ [_ note]]
-   {:dispatch [:http {:method :post
-                      :uri "/command/new_note"
-                      :headers {"content-type" "application/edn"}
-                      :body (pr-str note)
-                      :response-format (edn-response-format)
-                      :on-success [:update-local-note]
-                      :on-auth-failure [:end-bad-session]
-                      :on-failure [:FIXME-generic-fail]}]}))
+   {:http {:method :post
+           :uri "/command/new_note"
+           :headers {"content-type" "application/edn"}
+           :body (pr-str note)
+           :response-format (edn-response-format)
+           :on-success [:update-local-note]
+           :on-auth-failure [:end-bad-session]
+           :on-failure [:FIXME-generic-fail]}}))
 
 (re-frame/reg-event-db
  :update-local-note
@@ -182,13 +191,12 @@
 (re-frame/reg-event-fx
  :new-login
  (fn [{:keys [db]} [_ session-id]]
-   {:db (assoc-in db [:data/auth :auth/session-id] session-id)
+   {:db (auth/set-session db session-id)
     :dispatch [:pull-initial-data]}))
 
 (re-frame/reg-event-db
  :end-bad-session
- (fn [db _]
-   (db/initial-data)))
+ (fn [_ _] (db/initial-data)))
 
 (re-frame/reg-event-fx
  :FIXME-generic-fail

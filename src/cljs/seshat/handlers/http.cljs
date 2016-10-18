@@ -1,5 +1,6 @@
 (ns seshat.handlers.http
-  (:require [re-frame.core :as re-frame]))
+  (:require [re-frame.core :as re-frame]
+            [seshat.db.auth :as auth]))
 
 
 (def ^:const +special-fail-handler+
@@ -23,10 +24,9 @@
                                          :auth-event on-auth-failure}])))
 
 (re-frame/reg-cofx
- ;; db use is weird, point of this is to move away from db?
  :session
  (fn [{:keys [db] :as coeffects}]
-   (assoc coeffects :session (-> db :data/auth :auth/session-id))))
+   (assoc coeffects :session (auth/get-session db))))
 
 (re-frame/reg-event-fx
  :http

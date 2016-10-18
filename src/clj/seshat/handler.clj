@@ -22,12 +22,13 @@
   (GET "/query" [] (resp/response (p/query db {}))))
 
 (def new-note-route
-  (POST "/command/new_note" [temp-id text]
+  (POST "/command/new_note" [temp-id text  :as req]
         (if (and (some? temp-id) (some? text))
           (let [note (p/new-note! db text)
                 result (assoc note :temp-id temp-id)]
             (resp/created "/command/new_note" result))
-          (bad-request "ur data is junk"))))
+          (bad-request (pr-str req);"ur data is junk"
+           ))))
 
 (defroutes resource-command-routes
   (PUT "/command/edit_note/:id" [id text]
@@ -50,32 +51,39 @@
           (resp/response notes))))
 
 (def login-route
-  {:middleware [wrap-edn-params]
-   :handler (POST "/login" [email password]
-                  (let [login-result (session-login! fake-auth email password)]
-                    (if (keyword? login-result) ;; that darn keyword check again
-                      {:status 401 :body {:email email :password password} :headers {}}
-                      (resp/response login-result))))})
+  (POST "/login" [email password]
+        (let [login-result (session-login! fake-auth email password)]
+          (if (keyword? login-result) ;; that darn keyword check again
+            {:status 401 :body {:email email :password password} :headers {}}
+            (resp/response login-result)))))
 
 (def ^:const allowed-response-keys
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
 
-(def authed-routes
+(def note-routes
   {:middleware [[sm/wrap-session fake-auth]
                 [m/wrap-clean-response allowed-response-keys]]
-   :handler [{:middleware [wrap-edn-params]
-              :handler [new-note-route
-                        query-route
-                        {:middleware [[wrap-routes m/wrap-cast-id]]
-                         :handler resource-command-routes}]}                          
-             {:middleware [wrap-multipart-params]
-              :handler import-route}]})
+   :handler [new-note-route
+             query-route
+             {:middleware [[wrap-routes m/wrap-cast-id]]
+              :handler resource-command-routes}]})
+
+(def import-route
+  {:middleware [[sm/wrap-session fake-auth]
+                wrap-multipart-params]
+   :handler import-route})
+
+(def edn-routes
+  "Best to organize this way due to mutable stream action in param parsing"
+  {:middleware [wrap-edn-params]
+   :handler [login-route
+             note-routes]})
 
 (def routes-data
   [(GET "/" [] (resp/resource-response "index.html" {:root "public"}))
    {:middleware [m/wrap-edn-response]
-    :handler [login-route authed-routes]}
+    :handler [edn-routes import-route]}
    (resources "/")])
 
 (defroutes routes (handler/compile routes-data))

@@ -5,6 +5,7 @@
               [ajax.edn :refer [edn-response-format]]
 
               [seshat.handlers.http]
+              [seshat.handlers.session]
               [seshat.db.auth :as auth]))
 
 (defn reg-event-re-dispatch
@@ -19,8 +20,9 @@
 
 (re-frame/reg-event-fx
  :initialize
- (fn  [_ _]
-   {:db (db/initial-data)
+ (re-frame/inject-cofx :session)
+ (fn  [{:keys [session]} _]
+   {:db (db/initial-data {:session session})
     :dispatch [:initial-login-check]}))
 
 (reg-event-re-dispatch
@@ -179,20 +181,25 @@
  (fn [db _]
    (assoc-in db [:data/display :display/upload-error] false)))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  "FAKE-LOGIN"
  (fn [_ [_ email password]]
-   {:dispatch 
-    (cond (= ["foo@bar.com" "bar"] [email password]) [:new-login "fakest-session"]
-          (= "foo@bad.com" email) [:new-login "bad-session-yo"]
-          :else [:FIXME-generic-fail])}))
-;; re_frame.core.dispatch(cljs.core.vector("FAKE-LOGIN", "fake", "login"))                                 
+   {:http {:method :post
+           :uri "/login"
+           :headers {"content-type" "application/edn"}
+           :body (pr-str {:email email :password password})
+           :response-format (edn-response-format)
+           :on-success [:new-login]
+           :on-failure [:FIXME-generic-fail]}}))
+;; re_frame.core.dispatch(cljs.core.vector("FAKE-LOGIN", "fake", "login"))                              
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :new-login
- (fn [{:keys [db]} [_ session-id]]
-   {:db (auth/set-session db session-id)
-    :dispatch [:pull-initial-data]}))
+ (fn [{:keys [db]} [_ {session-id :session}]]
+   {:save-local-session session-id
+    :pull-initial-data nil}
+   ;; we could have ourselves a race condition right here
+   ))
 
 (re-frame/reg-event-db
  :end-bad-session

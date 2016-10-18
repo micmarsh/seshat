@@ -3,6 +3,7 @@
 
 (def default-db
   #:data{:notes []
+         :auth #:auth{:session-id nil}
          :display #:display{:notes []
                             :tags []
                             :filters #:filters{:tags #{}

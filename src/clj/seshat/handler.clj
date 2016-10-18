@@ -9,7 +9,10 @@
             [seshat.database.protocols :as p]
             [seshat.database.impl.fake :refer [fake-impl]]
             [seshat.middleware :as m]
-            [seshat.import.fetchnotes :as f]))
+            [seshat.session.middleware :as sm]
+            [seshat.import.fetchnotes :as f]
+
+            [seshat.session.protocols :as sp]))
 
 (def db fake-impl)
 
@@ -50,9 +53,16 @@
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
 
+(def fake-session
+  (reify sp/Lookup
+    (lookup-session [_ key]
+      (when (= "fakest-session" key)
+        {:session "yes"}))))
+
 (def routes-data
   [(GET "/" [] (resp/resource-response "index.html" {:root "public"}))
    {:middleware [m/wrap-edn-response
+                 [sm/wrap-session fake-session]
                  [m/wrap-clean-response allowed-response-keys]]
     :handler [{:middleware [wrap-edn-params]
                :handler [new-note-route

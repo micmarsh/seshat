@@ -182,7 +182,7 @@
    (assoc-in db [:data/display :display/upload-error] false)))
 
 (reg-event-re-dispatch
- "FAKE-LOGIN"
+ :user-login
  (fn [_ [_ email password]]
    {:http {:method :post
            :uri "/login"
@@ -191,7 +191,6 @@
            :response-format (edn-response-format)
            :on-success [:new-login]
            :on-failure [:FIXME-generic-fail]}}))
-;; re_frame.core.dispatch(cljs.core.vector("FAKE-LOGIN", "fake", "login"))                              
 
 (reg-event-re-dispatch
  :new-login

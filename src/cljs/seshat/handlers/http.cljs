@@ -1,6 +1,5 @@
 (ns seshat.handlers.http
-  (:require [re-frame.core :as re-frame]
-            [seshat.db.auth :as auth]))
+  (:require [re-frame.core :as re-frame]))
 
 
 (def ^:const +special-fail-handler+
@@ -22,11 +21,6 @@
     on-auth-failure (assoc :on-failure [+special-fail-handler+
                                         {:regular-event on-failure
                                          :auth-event on-auth-failure}])))
-
-(re-frame/reg-cofx
- :session
- (fn [{:keys [db] :as coeffects}]
-   (assoc coeffects :session (auth/get-session db))))
 
 (re-frame/reg-event-fx
  :http

@@ -1,9 +1,11 @@
 (ns seshat.db
-  (:require [seshat.lib.notes :as notes]))
+  (:require [seshat.lib.notes :as notes]
+            [seshat.db.auth :as auth]))
 
 (def default-db
   #:data{:notes []
-         :auth #:auth{:session-id nil}
+         :auth #:auth{:session-id nil
+                      :login-fail false}
          :display #:display{:notes []
                             :tags []
                             :filters #:filters{:tags #{}
@@ -12,7 +14,11 @@
                             :currently-uploading false
                             :upload-error false}})
 
-(defn initial-data [] default-db)
+(defn initial-data
+  ([] (initial-data {}))
+  ([{:keys [session] :as persisted}]
+   (cond-> default-db
+     session (auth/set-session session))))
 
 (defn apply-filters [notes filters]
   (->> notes

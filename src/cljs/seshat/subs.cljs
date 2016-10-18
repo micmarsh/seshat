@@ -46,3 +46,7 @@
 (re-frame/reg-sub
  :logged-in?
  (comp boolean auth/get-session))
+
+(re-frame/reg-sub
+ :failed-login?
+ auth/login-fail?)

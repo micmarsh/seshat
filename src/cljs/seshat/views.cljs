@@ -103,14 +103,40 @@
              :name "upload-file"}]]
           [:button {:on-click #(upload-file file-element)} "Upload"]])])))
 
+(defn text-bind-callback [atom]
+  (fn [event]
+    (->> event
+         (util/input-text)
+         (reset! atom))))
+
+(defn login-form
+  []
+  (let [fail? (re-frame/subscribe [:failed-login?])
+        email (atom "")
+        pw (atom "")]
+    (fn []
+      [:div#login-form
+       [:h3 "Login"]
+       [:label {:for "email"} "email"] [:br]
+       [:input {:type "text" :on-change (text-bind-callback email)}] [:br]
+       [:label {:for "password"} "password"] [:br]
+       [:input {:type "password" :on-change (text-bind-callback pw)}] [:br]
+       [:button {:on-click #(re-frame/dispatch [:user-login @email @pw])} "login"]
+       (when @fail?
+         [:div [:span#login-failure-message "Bad credentials"]])])))
+
+(defn main-app
+  []
+  [:div#main-app
+   [notes-list]
+   [tags-list]
+   [uploader]])
+
 (defn main-panel
   []
   (let [logged-in? (re-frame/subscribe [:logged-in?])]
     (fn []
       [:div#main-panel
        (if @logged-in?
-         [:div#main-app
-          [notes-list]
-          [tags-list]
-          [uploader]]
-         [:div [:h2 "ur not logged in lol"]])])))
+         [main-app]
+         [login-form])])))

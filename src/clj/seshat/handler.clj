@@ -8,11 +8,11 @@
             [ring.middleware.multipart-params :refer [wrap-multipart-params]]
             [seshat.database.protocols :as p]
             [seshat.database.impl.fake :refer [fake-impl]]
+            [seshat.auth.impl.fake :refer [fake-auth]]
+            [seshat.auth.login :refer [session-login!]]
             [seshat.middleware :as m]
             [seshat.session.middleware :as sm]
-            [seshat.import.fetchnotes :as f]
-
-            [seshat.session.protocols :as sp]))
+            [seshat.import.fetchnotes :as f]))
 
 (def db fake-impl)
 
@@ -49,28 +49,40 @@
                           (f/extract-notes upload-file))]
           (resp/response notes))))
 
+(def login-route
+  (POST "/login" [email password]
+        (let [login-result (session-login! fake-auth email password)]
+          (if (keyword? login-result) ;; that darn keyword check again
+            {:status 401 :body {:email email :password password} :headers {}}
+            (resp/response login-result)))))
+
 (def ^:const allowed-response-keys
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
 
-(def fake-session
-  (reify sp/Lookup
-    (lookup-session [_ key]
-      (when (= "fakest-session" key)
-        {:session "yes"}))))
+(def note-routes
+  {:middleware [[sm/wrap-session fake-auth]
+                [m/wrap-clean-response allowed-response-keys]]
+   :handler [new-note-route
+             query-route
+             {:middleware [[wrap-routes m/wrap-cast-id]]
+              :handler resource-command-routes}]})
+
+(def import-route
+  {:middleware [[sm/wrap-session fake-auth]
+                wrap-multipart-params]
+   :handler import-route})
+
+(def edn-routes
+  "Best to organize this way due to mutable stream action in param parsing"
+  {:middleware [wrap-edn-params]
+   :handler [login-route
+             note-routes]})
 
 (def routes-data
   [(GET "/" [] (resp/resource-response "index.html" {:root "public"}))
-   {:middleware [m/wrap-edn-response
-                 [sm/wrap-session fake-session]
-                 [m/wrap-clean-response allowed-response-keys]]
-    :handler [{:middleware [wrap-edn-params]
-               :handler [new-note-route
-                         query-route
-                         {:middleware [[wrap-routes m/wrap-cast-id]]
-                          :handler resource-command-routes}]}                          
-              {:middleware [wrap-multipart-params]
-               :handler import-route}]}
+   {:middleware [m/wrap-edn-response]
+    :handler [edn-routes import-route]}
    (resources "/")])
 
 (defroutes routes (handler/compile routes-data))

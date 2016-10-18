@@ -22,13 +22,12 @@
   (GET "/query" [] (resp/response (p/query db {}))))
 
 (def new-note-route
-  (POST "/command/new_note" [temp-id text  :as req]
+  (POST "/command/new_note" [temp-id text]
         (if (and (some? temp-id) (some? text))
           (let [note (p/new-note! db text)
                 result (assoc note :temp-id temp-id)]
             (resp/created "/command/new_note" result))
-          (bad-request (pr-str req);"ur data is junk"
-           ))))
+          (bad-request "ur data is junk"))))
 
 (defroutes resource-command-routes
   (PUT "/command/edit_note/:id" [id text]

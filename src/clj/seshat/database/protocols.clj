@@ -33,3 +33,8 @@
 
 (defprotocol QueryNotes
   (query [db query]))
+
+(defprotocol UserFilter
+  (user-filter [db user-id]
+    "Returns an implementation of one or more of the above, restricted to only affecting
+     the given users' dataset"))

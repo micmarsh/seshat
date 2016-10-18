@@ -1,7 +1,8 @@
 (ns seshat.session.middleware
   (:require [seshat.session
              [protocols :as p]
-             [request :as r]]))
+             [request :as r]]
+            [seshat.database.protocols :as db]))
 
 (defn wrap-session
   "Too complected? Too bad. Just deal with it for nows"
@@ -19,3 +20,11 @@
        :headers {}
        :body "need session header\n"})))
 
+(defn wrap-user-data
+  [handler db]
+  (fn [request]
+    (let [session-user (:seshat/session request)
+          user-id (:id session-user)]
+      (-> request
+          (assoc :db (db/user-filter db user-id))
+          (handler)))))

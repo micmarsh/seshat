@@ -7,45 +7,43 @@
             [ring.middleware.edn :refer [wrap-edn-params]]
             [ring.middleware.multipart-params :refer [wrap-multipart-params]]
             [seshat.database.protocols :as p]
-            [seshat.database.impl.fake :refer [fake-impl]]
+            [seshat.database.impl.fake :refer [fake-user-data]]
             [seshat.auth.impl.fake :refer [fake-auth]]
             [seshat.auth.login :refer [session-login!]]
             [seshat.middleware :as m]
             [seshat.session.middleware :as sm]
             [seshat.import.fetchnotes :as f]))
 
-(def db fake-impl)
-
 (def bad-request (partial hash-map :status 400 :body))
 
 (def query-route
-  (GET "/query" [] (resp/response (p/query db {}))))
+  (GET "/query" [:as r] (resp/response (p/query (:db r) {}))))
 
 (def new-note-route
-  (POST "/command/new_note" [temp-id text]
+  (POST "/command/new_note" [temp-id text :as r]
         (if (and (some? temp-id) (some? text))
-          (let [note (p/new-note! db text)
+          (let [note (p/new-note! (:db r) text)
                 result (assoc note :temp-id temp-id)]
             (resp/created "/command/new_note" result))
           (bad-request "ur data is junk"))))
 
 (defroutes resource-command-routes
-  (PUT "/command/edit_note/:id" [id text]
+  (PUT "/command/edit_note/:id" [id text :as r]
        (if (some? text)
-         (if-let [updated (p/edit-note! db id text)]
+         (if-let [updated (p/edit-note! (:db r) id text)]
            (resp/response updated)
            (resp/not-found "that stuff doesn't exist"))
          (bad-request "ur data sux")))
   
-  (DELETE "/command/delete_note/:id" [id]
-          (let [deleted (p/delete-note! db id)]
+  (DELETE "/command/delete_note/:id" [id :as r]
+          (let [deleted (p/delete-note! (:db r) id)]
             (if (pos? (:deleted deleted))
               (resp/response deleted)
               (resp/not-found "that stuff doesn't exist, maybe u already deleted?")))))
 
 (def import-route
   (POST "/import/fetchnotes" [upload-file :as r]
-        (let [notes (keep (partial p/import-note! db)
+        (let [notes (keep (partial p/import-note! (:db r))
                           (f/extract-notes upload-file))]
           (resp/response notes))))
 
@@ -62,6 +60,7 @@
 
 (def note-routes
   {:middleware [[sm/wrap-session fake-auth]
+                [sm/wrap-user-data fake-user-data]
                 [m/wrap-clean-response allowed-response-keys]]
    :handler [new-note-route
              query-route
@@ -70,6 +69,7 @@
 
 (def import-route
   {:middleware [[sm/wrap-session fake-auth]
+                [sm/wrap-user-data fake-user-data]
                 wrap-multipart-params]
    :handler import-route})
 

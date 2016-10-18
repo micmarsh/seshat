@@ -4,7 +4,8 @@
 
 (def default-db
   #:data{:notes []
-         :auth #:auth{:session-id nil}
+         :auth #:auth{:session-id nil
+                      :login-fail false}
          :display #:display{:notes []
                             :tags []
                             :filters #:filters{:tags #{}

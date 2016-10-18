@@ -190,7 +190,18 @@
            :body (pr-str {:email email :password password})
            :response-format (edn-response-format)
            :on-success [:new-login]
+           :on-auth-failure [:failed-login]
            :on-failure [:FIXME-generic-fail]}}))
+
+(re-frame/reg-event-fx
+ :failed-login
+ (fn [{:keys [db]} _]
+   {:db (auth/login-fail db true)
+    :dispatch-later [{:ms 5000 :dispatch [:clear-failed-login]}]}))
+
+(re-frame/reg-event-db
+ :clear-failed-login
+ (fn [db _] (auth/login-fail db false)))
 
 (reg-event-re-dispatch
  :new-login

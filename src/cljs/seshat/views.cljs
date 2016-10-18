@@ -111,7 +111,8 @@
 
 (defn login-form
   []
-  (let [email (atom "")
+  (let [fail? (re-frame/subscribe [:failed-login?])
+        email (atom "")
         pw (atom "")]
     (fn []
       [:div#login-form
@@ -120,7 +121,9 @@
        [:input {:type "text" :on-change (text-bind-callback email)}] [:br]
        [:label {:for "password"} "password"] [:br]
        [:input {:type "password" :on-change (text-bind-callback pw)}] [:br]
-       [:button {:on-click #(re-frame/dispatch [:user-login @email @pw])} "login"]])))
+       [:button {:on-click #(re-frame/dispatch [:user-login @email @pw])} "login"]
+       (when @fail?
+         [:div [:span#login-failure-message "Bad credentials"]])])))
 
 (defn main-app
   []

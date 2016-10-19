@@ -9,7 +9,7 @@
             [seshat.database.protocols :as p]
             [seshat.database.impl.fake :refer [fake-user-data]]
             [seshat.auth.impl.fake :refer [fake-auth]]
-            [seshat.auth.login :refer [session-login!]]
+            [seshat.auth.login :as auth] ;; TODO ns name change
             [seshat.middleware :as m]
             [seshat.session.middleware :as sm]
             [seshat.import.fetchnotes :as f]))
@@ -49,10 +49,16 @@
 
 (def login-route
   (POST "/login" [email password]
-        (let [login-result (session-login! fake-auth email password)]
+        (let [login-result (auth/session-login! fake-auth email password)]
           (if (keyword? login-result) ;; that darn keyword check again
             {:status 401 :body {:email email :password password} :headers {}}
             (resp/response login-result)))))
+
+(def register-route
+  (POST "/register" [email password]
+        (if-let [register-result (auth/session-register! fake-auth email password)]
+          (resp/response register-result)
+          (bad-request "couldn't register"))))
 
 (def ^:const allowed-response-keys
   ;; TODO this belongs elsewhere as well, not http-layer at all
@@ -77,6 +83,7 @@
   "Best to organize this way due to mutable stream action in param parsing"
   {:middleware [wrap-edn-params]
    :handler [login-route
+             register-route
              note-routes]})
 
 (def routes-data

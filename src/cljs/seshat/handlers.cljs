@@ -15,8 +15,9 @@
     event-key
     middleware
     (fn [& args]
-      (let [events (apply handler args)]
-       {:dispatch-n (seq events)})))))
+      (if-let [events (seq (apply handler args))]
+        {:dispatch-n events}
+        {})))))
 
 (re-frame/reg-event-fx
  :initialize

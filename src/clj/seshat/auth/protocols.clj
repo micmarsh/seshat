@@ -7,3 +7,7 @@
      * :no-user
      * :bad-password
      On relevant error cases"))
+
+(defprotocol Register
+  (register! [users email password]
+    "If email is not duplicate, creates and returns new user object"))

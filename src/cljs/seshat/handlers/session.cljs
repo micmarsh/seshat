@@ -16,7 +16,7 @@
    (storage/persist-local! session-key session-id)))
 
 (re-frame/reg-event-fx
- :end-bad-session
+ :end-session
  (fn [{:keys [db]} _]
    {:db (db/initial-data)
     :clear-local-session nil}

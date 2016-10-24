@@ -1,5 +1,4 @@
 (ns seshat.subs
-    (:require-macros [reagent.ratom :refer [reaction]])
     (:require [re-frame.core :as re-frame]
               [seshat.db.auth :as auth]))
 

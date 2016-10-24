@@ -81,8 +81,7 @@
 
 (def edn-routes
   "Best to organize this way due to mutable stream action in param parsing"
-  {:middleware [wrap-edn-params
-                (fn [h] (fn [r] (println "yoooo" r) (h r)))]
+  {:middleware [wrap-edn-params]
    :handler [login-route
              register-route
              note-routes]})

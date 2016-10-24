@@ -1,5 +1,6 @@
 (ns seshat.views
   (:require [re-frame.core :as re-frame]
+            [reagent.core :as r]
             [seshat.lib.notes :as notes]
             [seshat.views.util :as util]))
 
@@ -125,12 +126,41 @@
        (when @fail?
          [:div [:span#login-failure-message "Bad credentials"]])])))
 
+(defn register-form
+  []
+  (let [email (atom "")
+        pw (atom "")]
+    (fn []
+      [:div#login-form 
+       [:h3 "Register"] 
+       [:label {:for "email"} "email"] [:br]
+       [:input {:type "text" :on-change (text-bind-callback email)}] [:br]
+       [:label {:for "password"} "password"] [:br]
+       [:input {:type "password" :on-change (text-bind-callback pw)}] [:br]
+       [:button {:on-click #(re-frame/dispatch [:user-register @email @pw])} "register"]])))
+
+
+(defn not-authed
+  []
+  (let [view-switch (r/atom :login)]
+    (fn []
+      (case @view-switch
+        :login [:div [login-form]
+                [:br]
+                [:span {:on-click #(reset! view-switch :register)}
+                 "register here"]]
+        :register [:div [register-form]
+                   [:br]
+                   [:span {:on-click #(reset! view-switch :login)}
+                    "log in here"]]))))
+
 (defn main-app
   []
   [:div#main-app
    [notes-list]
    [tags-list]
-   [uploader]])
+   [uploader]
+   [:br] [:button {:on-click #(re-frame/dispatch [:logout])} "Log Out"]])
 
 (defn main-panel
   []
@@ -139,4 +169,4 @@
       [:div#main-panel
        (if @logged-in?
          [main-app]
-         [login-form])])))
+         [not-authed])])))

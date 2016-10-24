@@ -15,8 +15,9 @@
     event-key
     middleware
     (fn [& args]
-      (let [events (apply handler args)]
-       {:dispatch-n (seq events)})))))
+      (if-let [events (seq (apply handler args))]
+        {:dispatch-n events}
+        {})))))
 
 (re-frame/reg-event-fx
  :initialize
@@ -31,14 +32,14 @@
  (fn  [{:keys [session]} _]
    (if (some? session)
      {:pull-initial-data nil} ;; TODO in future, something more cache-aware
-     {:end-bad-session nil})))
+     {:end-session nil})))
 
 (def ^:const full-query-request
   {:method :get
    :uri "/query"
    :response-format (edn-response-format)
    :on-success [:query-result]
-   :on-auth-failure [:end-bad-session]
+   :on-auth-failure [:end-session]
    :on-failure [:FIXME-generic-fail]})
 
 (re-frame/reg-event-fx
@@ -90,7 +91,7 @@
            :body (pr-str note)
            :response-format (edn-response-format)
            :on-success [:update-local-note]
-           :on-auth-failure [:end-bad-session]
+           :on-auth-failure [:end-session]
            :on-failure [:FIXME-generic-fail]}}))
 
 (re-frame/reg-event-db
@@ -124,7 +125,7 @@
                       :body (pr-str note)
                       :response-format (edn-response-format)
                       :on-success [:update-local-note]
-                      :on-auth-failure [:end-bad-session]
+                      :on-auth-failure [:end-session]
                       :on-failure [:FIXME-generic-fail]}]}))
 
 (reg-event-re-dispatch
@@ -147,7 +148,7 @@
                       :headers {"content-type" "application/edn"}
                       :response-format (edn-response-format)
                       :on-success [:FIXME-generic-success]
-                      :on-auth-failure [:end-bad-session]
+                      :on-auth-failure [:end-session]
                       :on-failure [:FIXME-generic-fail]}]}))
 
 (re-frame/reg-event-fx
@@ -158,7 +159,7 @@
                       :body file
                       :response-format (edn-response-format)
                       :on-success [:upload-success]
-                      :on-auth-failure [:end-bad-session]
+                      :on-auth-failure [:end-session]
                       :on-failure [:upload-failure]}]
     :db (assoc-in (:db fx) [:data/display :display/currently-uploading] true)}))
 
@@ -189,8 +190,19 @@
            :headers {"content-type" "application/edn"}
            :body (pr-str {:email email :password password})
            :response-format (edn-response-format)
-           :on-success [:new-login]
+           :on-success [:new-session]
            :on-auth-failure [:failed-login]
+           :on-failure [:FIXME-generic-fail]}}))
+
+(reg-event-re-dispatch
+ :user-register
+ (fn [_ [_ email password]]
+   {:http {:method :post
+           :uri "/register"
+           :headers {"content-type" "application/edn"}
+           :body (pr-str {:email email :password password})
+           :response-format (edn-response-format)
+           :on-success [:new-session]
            :on-failure [:FIXME-generic-fail]}}))
 
 (re-frame/reg-event-fx
@@ -204,16 +216,15 @@
  (fn [db _] (auth/login-fail db false)))
 
 (reg-event-re-dispatch
- :new-login
- (fn [{:keys [db]} [_ {session-id :session}]]
+ :new-session
+ (fn [_ [_ {session-id :session}]]
    {:save-local-session session-id
     :pull-initial-data nil}
    ;; we could have ourselves a race condition right here
    ))
 
-(re-frame/reg-event-db
- :end-bad-session
- (fn [_ _] (db/initial-data)))
+(reg-event-re-dispatch :logout (constantly {:end-session nil}))
+;; TODO logout route for actual server sessions
 
 (re-frame/reg-event-fx
  :FIXME-generic-fail

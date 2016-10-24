@@ -20,3 +20,12 @@
 ;; This makes a few assumptions you might not want
 ;; * fake session gen (duh) (should probably be own proto)
 ;; * login error as keyword (prolly at least hide behind some fn)
+
+(defn session-register!
+  "Given properly implemented storage, creates new user if able
+   then returns a new session"
+  [storage email password]
+  (when-let [user (p/register! storage email password)]
+    (let [session-id (new-fake-session)]
+      (sp/save-session! storage session-id user)
+      {:session session-id})))

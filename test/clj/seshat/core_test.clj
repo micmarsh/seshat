@@ -95,3 +95,20 @@
           (is (= 1 (count @selected-notes)))
           (is (= "#todo #read Hans Herman-Hoppe"
                  (:text (first @selected-notes)))))))))
+
+(deftest test-app-note-edit-and-delete
+  (clear!)
+  (re-frame/dispatch [:user-register +email+ +password+])
+  (doseq [text sample-note-text]
+    (re-frame/dispatch [:new-note text]))
+  
+  (let [display-notes (re-frame/subscribe [:notes-list])]
+    (testing "simple delete"
+      (re-frame/dispatch [:delete-note (first @display-notes)])
+      (is (= 4 (count (notes/all-notes)) (count @display-notes))))
+    (testing "simple edit"
+      (let [edited-note (first @display-notes)]
+        (re-frame/dispatch [:edited-note "#todo test editing" edited-note])
+        (is (= "#todo test editing"
+               (:text (notes/note (:id edited-note)))
+               (:text (notes/note (:id edited-note) @display-notes))))))))

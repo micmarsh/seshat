@@ -1,13 +1,12 @@
 (ns seshat.test.notes
-  (:require [seshat.database.protocols :as p]
-            [seshat.database.impl.fake :as db]
+  (:require [seshat.database.impl.fake :as db]
             [seshat.auth.impl.fake :as auth]))
 
-(defn all-notes
-  ([] (all-notes (:id (first @auth/users))))
-  ([user-id]
-   (-> db/fake-user-data
-       (p/user-filter user-id)
-       (p/query nil))))
+(defn all-notes [] @db/fake-database)
 
 (def clear! #(reset! db/fake-database []))
+
+(defn note
+  ([id] (note id @db/fake-database))
+  ([id note-list]
+   (first (filter (comp #{id} :id) note-list))))

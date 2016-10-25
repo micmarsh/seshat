@@ -144,7 +144,7 @@
  (fn [_ [_ note]]
    {:dispatch [:http {:method :delete
                       :uri (str "/command/delete_note/" (:id note))
-                      :body {}
+                      :body "{}"
                       :headers {"content-type" "application/edn"}
                       :response-format (edn-response-format)
                       :on-success [:FIXME-generic-success]

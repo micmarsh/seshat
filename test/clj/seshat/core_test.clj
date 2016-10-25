@@ -112,3 +112,28 @@
         (is (= "#todo test editing"
                (:text (notes/note (:id edited-note)))
                (:text (notes/note (:id edited-note) @display-notes))))))))
+
+(require '[re-frame.test.data :refer [run-test-data]])
+
+(def ^:const test-data
+  [{:events (cons [:user-register +email+ +password+]
+                  (map (partial vector :new-note) sample-note-text))}
+   {:events [[:delete-note '?????]]
+    :subscriptions {^{:transform count} [:notes-list] 4}}
+   {:events [[:edited-note "#todo test editing" '?????]]
+    :subscriptions {^{:transform (comp :text (partial notes/note (:id '????)))} [:notes-list] "#todo test editing"}}])
+;; All kinds of issues here already
+;; * don't like :tranform
+;;  * it may just be necessary
+;;  * metadata is weird for something used basically every time
+;; * can't use to test server, but that's obvious, gotta keep it
+;; simple
+;; * dynamic state business
+;;  * the ?????'s above
+;;  * perhpas necessitates breaking the initialization out of the
+;;  above, b/c need to grab relevant note anyways.
+
+
+(deftest super-hot-experimental-test-data-format
+  (clear!)
+  )

@@ -4,12 +4,12 @@
 
 (re-frame/reg-sub
  :display
- (fn [db] (:data/display db)))
+ (fn [db & _] (:data/display db)))
 
 (re-frame/reg-sub
  :notes-list
  :<- [:display]
- (fn [display]
+ (fn [display & _]
    (->> display
         (:display/notes)
         (sort-by :updated)
@@ -18,34 +18,34 @@
 (re-frame/reg-sub
  :tags-list
  :<- [:display]
- (fn [display] (:display/tags display)))
+ (fn [display & _] (:display/tags display)))
 
 (re-frame/reg-sub
  :selected-tags
  :<- [:display]
- (fn [display] (-> display :display/filters :filters/tags)))
+ (fn [display & _] (-> display :display/filters :filters/tags)))
 
 (re-frame/reg-sub
  :currently-editing
  :<- [:display]
- (fn [display] (:display/currently-editing display)))
+ (fn [display & _] (:display/currently-editing display)))
 
 (re-frame/reg-sub
  :currently-uploading
  :<- [:display]
- (fn [display]
+ (fn [display & _]
    (:display/currently-uploading display)))
 
 (re-frame/reg-sub
  :upload-error
  :<- [:display]
- (fn [display]
+ (fn [display & _]
    (:display/upload-error display)))
 
 (re-frame/reg-sub
  :logged-in?
- (comp boolean auth/get-session))
+ (fn [db & _] (boolean (auth/get-session db))))
 
 (re-frame/reg-sub
  :failed-login?
- auth/login-fail?)
+ (fn [db & _] (auth/login-fail? db)))

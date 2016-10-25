@@ -71,5 +71,5 @@
 
   :uberjar-name "seshat.jar"
 
-  :prep-tasks [["cljsbuild" "once" "min"] "compile"]
+;  :prep-tasks [["cljsbuild" "once" "min"] "compile"]
   )

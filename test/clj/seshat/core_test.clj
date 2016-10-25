@@ -1,21 +1,13 @@
 (ns seshat.core-test
-  (:require [day8.re-frame.test :as rf-test]
-            [clojure.test :refer [deftest is run-tests testing use-fixtures]]
+  (:require [clojure.test :refer [deftest is run-tests testing use-fixtures]]
             [re-frame.core :as re-frame]
 
             [seshat.persist :as persist]
             [seshat.test.auth :as auth]
+            [seshat.test.re-frame :refer [sync-dispatch-fixture]]
             [seshat.handlers]
             [seshat.subs]
             [seshat.test.http]))
-
-(defmacro with-sync-dispatches
-    [& body]
-    `(rf-test/run-test-sync
-      (rf-test/with-temp-re-frame-state
-        (re-frame/reg-fx :dispatch re-frame/dispatch)
-        (re-frame/reg-fx :dispatch-n (partial run! re-frame/dispatch))
-        ~@body)))
 
 (defn clear! []
   (persist/clear!)
@@ -25,7 +17,7 @@
 (def ^:const +password+ "bar")
 
 (use-fixtures :once
-  (fn [test] (with-sync-dispatches (test)))
+  sync-dispatch-fixture
   (fn [test] (re-frame/dispatch [:initialize]) (test)))
 
 (deftest test-new-user-authentication
@@ -41,7 +33,7 @@
       (is (= 1 (count @auth/users))
           "user created")
       (is (= {:email +email+ :password +password+} ;; TODO account
-             ;; for hasing in near future
+             ;; for hashing in near future
              (select-keys (first @auth/users) [:email :password]))
           "user has correct info")
       (testing "user can log in"

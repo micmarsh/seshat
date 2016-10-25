@@ -31,7 +31,7 @@
                    [figwheel-sidecar "0.5.4-3"]
                    [com.cemerick/piggieback "0.2.1"]]
 
-    :source-paths ["../re-frame-test/src/" "test/clj"]
+    :source-paths ["test/cljc" "test/clj"]
     ;; nasty dep, need to clone https://github.com/Day8/re-frame-test
     
     :plugins      [[lein-figwheel "0.5.4-3"]

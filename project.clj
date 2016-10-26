@@ -31,6 +31,9 @@
                    [figwheel-sidecar "0.5.4-3"]
                    [com.cemerick/piggieback "0.2.1"]]
 
+    :source-paths ["test/cljc" "test/clj"]
+    ;; nasty dep, need to clone https://github.com/Day8/re-frame-test
+    
     :plugins      [[lein-figwheel "0.5.4-3"]
                    [lein-doo "0.1.6"]
                    [cider/cider-nrepl "0.13.0"]]
@@ -68,5 +71,5 @@
 
   :uberjar-name "seshat.jar"
 
-  :prep-tasks [["cljsbuild" "once" "min"] "compile"]
+;  :prep-tasks [["cljsbuild" "once" "min"] "compile"]
   )

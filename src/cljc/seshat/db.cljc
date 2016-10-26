@@ -1,5 +1,6 @@
 (ns seshat.db
   (:require [seshat.lib.notes :as notes]
+            [clojure.string :as str]
             [seshat.db.auth :as auth]))
 
 (def default-db
@@ -47,7 +48,8 @@
 
 (defn search-text [db text]
   (-> db
-      (assoc-in [:data/display :display/filters :filters/search] text)
+      (assoc-in [:data/display :display/filters :filters/search]
+                (str/lower-case text))
       (update :data/display update-display (:data/notes db))))
 
 (defn add-note [db note]

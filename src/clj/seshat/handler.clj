@@ -92,7 +92,7 @@
     :handler [edn-routes import-route]}
    (resources "/")])
 
-(defroutes routes (handler/compile routes-data))
+(def routes (handler/compile routes-data))
 
 (def dev-handler (-> #'routes wrap-reload))
 

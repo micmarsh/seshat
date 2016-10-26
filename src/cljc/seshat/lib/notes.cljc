@@ -1,6 +1,7 @@
 (ns seshat.lib.notes
   (:refer-clojure :exclude [contains? ==])
-  (:require [clojure.core :as c]))
+  (:require [clojure.core :as c]
+            [clojure.string :as s]))
 
 (def tag-regex #"#[\w0-9]+")
 
@@ -33,6 +34,6 @@
 
 (defn filter-text [text notes]
   (filter
-   #?(:cljs (comp (partial re-find (js/RegExp. text "i")) :text)
-      :clj #(.contains ^String (:text %) text))
+   #?(:cljs (comp (partial re-find (js/RegExp. text "i")) s/lower-case :text)
+      :clj #(.contains ^String (s/lower-case (:text %)) text))
    notes))

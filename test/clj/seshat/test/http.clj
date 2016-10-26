@@ -1,5 +1,5 @@
 (ns seshat.test.http
-  (:require [seshat.handler :refer [handler]]
+  (:require [seshat.dev.server :refer [handler]]
             [re-frame.core :as re-frame]
             [clojure.set :refer [rename-keys]]))
 

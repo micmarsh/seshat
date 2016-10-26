@@ -21,7 +21,7 @@
                                     "test/js"]
 
   :figwheel {:css-dirs ["resources/public/css"]
-             :ring-handler seshat.handler/dev-handler}
+             :ring-handler seshat.dev.server/handler}
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 

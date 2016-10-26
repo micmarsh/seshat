@@ -47,16 +47,16 @@
                           (f/extract-notes upload-file))]
           (resp/response notes))))
 
-(def login-route
+(defn ->login-route [auth]
   (POST "/login" [email password]
-        (let [login-result (auth/session-login! fake-auth email password)]
+        (let [login-result (auth/session-login! auth email password)]
           (if (keyword? login-result) ;; that darn keyword check again
             {:status 401 :body {:email email :password password} :headers {}}
             (resp/response login-result)))))
 
-(def register-route
+(defn ->register-route [auth]
   (POST "/register" [email password]
-        (if-let [register-result (auth/session-register! fake-auth email password)]
+        (if-let [register-result (auth/session-register! auth email password)]
           (resp/response register-result)
           (bad-request "couldn't register"))))
 
@@ -82,8 +82,8 @@
 (def edn-routes
   "Best to organize this way due to mutable stream action in param parsing"
   {:middleware [wrap-edn-params]
-   :handler [login-route
-             register-route
+   :handler [(->login-route fake-auth)
+             (->register-route fake-auth)
              note-routes]})
 
 (def routes-data

@@ -3,12 +3,9 @@
             [compojure.route :refer [resources]]
             [ring.handler :as handler]
             [ring.util.response :as resp]
-            [ring.middleware.reload :refer [wrap-reload]]
             [ring.middleware.edn :refer [wrap-edn-params]]
             [ring.middleware.multipart-params :refer [wrap-multipart-params]]
             [seshat.database.protocols :as p]
-            [seshat.database.impl.fake :refer [fake-user-data]]
-            [seshat.auth.impl.fake :refer [fake-auth]]
             [seshat.auth.login :as auth] ;; TODO ns name change
             [seshat.middleware :as m]
             [seshat.session.middleware :as sm]
@@ -64,36 +61,34 @@
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
 
-(def note-routes
-  {:middleware [[sm/wrap-session fake-auth]
-                [sm/wrap-user-data fake-user-data]
+(defn ->note-routes [db auth]
+  {:middleware [[sm/wrap-session auth]
+                [sm/wrap-user-data db]
                 [m/wrap-clean-response allowed-response-keys]]
    :handler [new-note-route
              query-route
              {:middleware [[wrap-routes m/wrap-cast-id]]
               :handler resource-command-routes}]})
 
-(def import-route
-  {:middleware [[sm/wrap-session fake-auth]
-                [sm/wrap-user-data fake-user-data]
+(defn ->import-route [db auth]
+  {:middleware [[sm/wrap-session auth]
+                [sm/wrap-user-data db]
                 wrap-multipart-params]
    :handler import-route})
 
-(def edn-routes
+(defn ->edn-routes [db auth]
   "Best to organize this way due to mutable stream action in param parsing"
   {:middleware [wrap-edn-params]
-   :handler [(->login-route fake-auth)
-             (->register-route fake-auth)
-             note-routes]})
+   :handler [(->login-route auth)
+             (->register-route auth)
+             (->note-routes db auth)]})
 
-(def routes-data
+(defn ->routes-data [db auth]
   [(GET "/" [] (resp/resource-response "index.html" {:root "public"}))
    {:middleware [m/wrap-edn-response]
-    :handler [edn-routes import-route]}
+    :handler [(->edn-routes db auth)
+              (->import-route db auth)]}
    (resources "/")])
 
-(def routes (handler/compile routes-data))
-
-(def dev-handler (-> #'routes wrap-reload))
-
-(def handler routes)
+(defn ->handler [db auth]
+  (handler/compile (->routes-data db auth)))

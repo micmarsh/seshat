@@ -20,14 +20,28 @@
 (def ^:const +email+ "foo@bar.com")
 (def ^:const +password+ "bar")
 
-(use-fixtures :once
-  sync-dispatch-fixture
-  (fn [test] (re-frame/dispatch [:initialize]) (test)))
+(use-fixtures :once sync-dispatch-fixture)
+
+(def ^:const sample-note-text
+  ["#todo testing client logic"
+   "#todo test server logic"
+   "#read a book"
+   "#todo #read Hans Herman-Hoppe"
+   "re-frame is the best #resources #clojure"])
+
+(defn initial-state-fixture
+  [test]
+  (clear!)
+  (re-frame/dispatch [:user-register +email+ +password+])
+  (doseq [text sample-note-text]
+    (re-frame/dispatch [:new-note text]))
+  (test))
+
+(use-fixtures :each initial-state-fixture)
 
 (deftest test-new-user-authentication
   (testing "Basic Registration"
-    (clear!)
-    (re-frame/dispatch [:user-register +email+ +password+])
+    ;; Actual registration in default fixture
     (let [logged-in? (re-frame/subscribe [:logged-in?])
           session (persist/fetch-local "session-id")]
       (is @logged-in? "subscriptions reflects auth state")
@@ -49,19 +63,8 @@
           (is (= #{session new-session} (set (keys @auth/sessions)))
               "both sessions now exist on server"))))))
 
-(def ^:const sample-note-text
-  ["#todo testing client logic"
-   "#todo test servier logic"
-   "#read a book"
-   "#todo #read Hans Herman-Hoppe"
-   "re-frame is the best #resources #clojure"])
-
 (deftest test-app-note-actions
-  (clear!)
-  (re-frame/dispatch [:user-register +email+ +password+])
-  (doseq [text sample-note-text]
-    (re-frame/dispatch [:new-note text]))
-  
+  ;; Notes added in default fixture
   (let [saved-notes (notes/all-notes)]
     (testing "initial notes properly saved in database"
       (is (= 5 (count saved-notes)))
@@ -97,11 +100,6 @@
                  (:text (first @selected-notes)))))))))
 
 (deftest test-app-note-edit-and-delete
-  (clear!)
-  (re-frame/dispatch [:user-register +email+ +password+])
-  (doseq [text sample-note-text]
-    (re-frame/dispatch [:new-note text]))
-  
   (let [display-notes (re-frame/subscribe [:notes-list])]
     (testing "simple delete"
       (re-frame/dispatch [:delete-note (first @display-notes)])
@@ -112,3 +110,36 @@
         (is (= "#todo test editing"
                (:text (notes/note (:id edited-note)))
                (:text (notes/note (:id edited-note) @display-notes))))))))
+
+(deftest test-app-actions-while-filtered
+  (let [selected-notes (re-frame/subscribe [:notes-list])
+        associated-tags (re-frame/subscribe [:tags-list])
+        selected-tags (re-frame/subscribe [:selected-tags])
+        new-note-text "#todo #read #philosophy Matthew B. Crawford"]
+    
+    (testing "adding note to filtered list"
+      (re-frame/dispatch [:click-tag "#todo"])
+      (re-frame/dispatch [:click-tag "#read"]) 
+      (testing "filtering still works normally"
+        (is (= 1 (count @selected-notes)))
+        (is (= #{"#todo" "#read"} @selected-tags (set @associated-tags))))
+      (re-frame/dispatch [:new-note new-note-text])
+      (testing "new note gets prepended onto filtered list"
+        (is (= new-note-text (:text (first @selected-notes))) "ordering is as expected")
+        (is (= 2 (count @selected-notes)))
+        (is (= #{"#todo" "#read"} @selected-tags))
+        (is (= #{"#todo" "#read" "#philosophy"}  (set @associated-tags)))))
+
+    (testing "editing note on filitered list"
+      (let [crawford-note (first @selected-notes)]
+        (re-frame/dispatch [:edited-note "#authors #philosophy Matthew B. Crawford" crawford-note])
+        (testing "editing tags out of note removes from filtered lists"
+          (is (= 1 (count @selected-notes)))
+          (is (= #{"#todo" "#read"} @selected-tags (set @associated-tags)))
+          (is (= "#todo #read Hans Herman-Hoppe" (:text (first @selected-notes)))))))
+
+    (testing "deleting note from filtered lists"
+      (re-frame/dispatch [:delete-note (first @selected-notes)])
+      (is (empty? @selected-notes))
+      (is (empty? @associated-tags))
+      (is (= #{"#todo" "#read"} @selected-tags)))))

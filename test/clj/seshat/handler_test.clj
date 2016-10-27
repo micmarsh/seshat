@@ -2,21 +2,24 @@
   (:require [clojure.test :refer [deftest is run-tests testing use-fixtures]]
             [seshat.test.http :refer [fake-http-request]]
 
-            [seshat.auth.impl.fake :refer [sessions]]))
+            [seshat.auth.impl.fake :refer [fake-auth]]
+            [seshat.session.protocols :as sp]))
 
-(def ^:const fake-session-id "fake-session")
 (def ^:const fake-user {:id -1})
+(def ^:dynamic *session-id* nil)
 
 (use-fixtures :once
   (fn [test]
-    (swap! sessions assoc fake-session-id fake-user)
-    (test)))
+    (let [session (sp/from-user fake-auth fake-user)]
+      (sp/save-session! fake-auth session)
+      (binding [*session-id* (sp/id fake-auth session)]
+        (test)))))
 
 (defn request [method uri data]
   {:method method
    :uri uri
    :headers {"content-type" "application/edn"
-             "session-id" fake-session-id}
+             "session-id" *session-id*}
    :body (pr-str data)})
 
 (def new-note (partial request :post "/command/new_note"))

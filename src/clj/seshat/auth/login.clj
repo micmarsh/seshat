@@ -2,8 +2,6 @@
   (:require [seshat.session.protocols :as sp]
             [seshat.auth.protocols :as p]))
 
-(defn new-fake-session [] (str (Math/abs (hash (rand)))))
-
 (defn session-login!
   "Given properly implemented storage
    * checks user creds
@@ -14,9 +12,9 @@
   (let [user (p/login storage email password)]
     (if (keyword? user)
       user
-      (let [session-id (new-fake-session)]
-        (sp/save-session! storage session-id user)
-        {:session session-id}))))
+      (let [new-session (sp/from-user storage user)]
+        (sp/save-session! storage new-session)
+        {:session (sp/id storage new-session)}))))
 ;; This makes a few assumptions you might not want
 ;; * fake session gen (duh) (should probably be own proto)
 ;; * login error as keyword (prolly at least hide behind some fn)
@@ -26,6 +24,6 @@
    then returns a new session"
   [storage email password]
   (when-let [user (p/register! storage email password)]
-    (let [session-id (new-fake-session)]
-      (sp/save-session! storage session-id user)
-      {:session session-id})))
+    (let [new-session (sp/from-user storage user)]
+      (sp/save-session! storage new-session)
+      {:session (sp/id storage new-session)})))

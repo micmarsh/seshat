@@ -6,10 +6,10 @@
 
 (defn wrap-session
   "Too complected? Too bad. Just deal with it for nows"
-  [handler storage]
+  [handler sessions]
   (fn [request]
     (if-let [id (r/header request)]
-      (if-let [session (p/lookup-session storage id)]
+      (if-let [session (p/lookup-session sessions id)]
         (-> request
             (assoc :seshat/session session)
             (handler))
@@ -21,10 +21,10 @@
        :body "need session header\n"})))
 
 (defn wrap-user-data
-  [handler db]
+  [handler db sessions]
   (fn [request]
-    (let [session-user (:seshat/session request)
-          user-id (:id session-user)]
+    (let [session (:seshat/session request)
+          user-id (p/user-id sessions session)]
       (-> request
           (assoc :db (db/user-filter db user-id))
           (handler)))))

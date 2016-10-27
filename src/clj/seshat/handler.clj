@@ -58,10 +58,6 @@
           (resp/response register-result)
           (bad-request "couldn't register"))))
 
-(def ^:const allowed-response-keys
-  ;; TODO this belongs elsewhere as well, not http-layer at all
-  [:id :temp-id :text :created :updated :deleted])
-
 (def new-note-params (s/keys :req-un [:note/text :note/temp-id]))
 
 (def edit-note-params (s/keys :req-un [:note/text]))
@@ -74,8 +70,7 @@
 
 (defn ->note-routes [db auth]
   {:middleware [[sm/wrap-session auth]
-                [sm/wrap-user-data db]
-                [m/wrap-clean-response allowed-response-keys]]
+                [sm/wrap-user-data db]]
    :handler [{:middleware [[wrap-routes m/wrap-validate-params new-note-params]]
               :handler new-note-route}
              query-route

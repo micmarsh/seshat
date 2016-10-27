@@ -14,3 +14,16 @@
 (s/def :note/full
   (s/merge :note/text-only
            (s/keys :req-un [:note/id :note/created :note/updated])))
+
+(def ^:const sample
+  {:id 1
+   :temp-id 'temp
+   :text "sample"
+   :created #inst "2016-01-01"
+   :updated #inst "2016-01-01"})
+
+(assert (s/valid? :note/full sample) "sample is up to date")
+
+(def ^:const spec-keys (keys sample))
+
+(defn trim [note] (select-keys note spec-keys))

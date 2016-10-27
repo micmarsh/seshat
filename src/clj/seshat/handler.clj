@@ -9,7 +9,9 @@
             [seshat.auth.login :as auth] ;; TODO ns name change
             [seshat.middleware :as m]
             [seshat.session.middleware :as sm]
-            [seshat.import.fetchnotes :as f]))
+            [seshat.import.fetchnotes :as f]
+            [seshat.spec.notes]
+            [clojure.spec :as s]))
 
 (def bad-request (partial hash-map :status 400 :body))
 
@@ -17,12 +19,10 @@
   (GET "/query" [:as r] (resp/response (p/query (:db r) {}))))
 
 (def new-note-route
-  (POST "/command/new_note" [temp-id text :as r]
-        (if (and (some? temp-id) (some? text))
-          (let [note (p/new-note! (:db r) text)
-                result (assoc note :temp-id temp-id)]
-            (resp/created "/command/new_note" result))
-          (bad-request "ur data is junk"))))
+  (POST "/command/new_note" [temp-id text :as r]        
+        (let [note (p/new-note! (:db r) text)
+              result (assoc note :temp-id temp-id)]
+          (resp/created "/command/new_note" result))))
 
 (defroutes resource-command-routes
   (PUT "/command/edit_note/:id" [id text :as r]
@@ -61,11 +61,14 @@
   ;; TODO this belongs elsewhere as well, not http-layer at all
   [:id :temp-id :text :created :updated :deleted])
 
+(def new-note-params (s/keys :req-un [:note/text :note/temp-id]))
+
 (defn ->note-routes [db auth]
   {:middleware [[sm/wrap-session auth]
                 [sm/wrap-user-data db]
                 [m/wrap-clean-response allowed-response-keys]]
-   :handler [new-note-route
+   :handler [{:middleware [[wrap-routes m/wrap-validate-params new-note-params]]
+              :handler new-note-route}
              query-route
              {:middleware [[wrap-routes m/wrap-cast-id]]
               :handler resource-command-routes}]})

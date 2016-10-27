@@ -70,7 +70,7 @@
 
 (defn ->note-routes [db auth]
   {:middleware [[sm/wrap-session auth]
-                [sm/wrap-user-data db]]
+                [sm/wrap-user-data db auth]]
    :handler [{:middleware [[wrap-routes m/wrap-validate-params new-note-params]]
               :handler new-note-route}
              query-route
@@ -78,7 +78,7 @@
 
 (defn ->import-route [db auth]
   {:middleware [[sm/wrap-session auth]
-                [sm/wrap-user-data db]
+                [sm/wrap-user-data db auth]
                 wrap-multipart-params]
    :handler import-route})
 

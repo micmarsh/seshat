@@ -24,14 +24,15 @@
               result (assoc note :temp-id temp-id)]
           (resp/created "/command/new_note" result))))
 
-(defroutes resource-command-routes
+(def edit-note-route
   (PUT "/command/edit_note/:id" [id text :as r]
        (if (some? text)
          (if-let [updated (p/edit-note! (:db r) id text)]
            (resp/response updated)
            (resp/not-found "that stuff doesn't exist"))
-         (bad-request "ur data sux")))
-  
+         (bad-request "ur data sux"))))
+
+(def delete-note-route
   (DELETE "/command/delete_note/:id" [id :as r]
           (let [deleted (p/delete-note! (:db r) id)]
             (if (pos? (:deleted deleted))
@@ -63,6 +64,14 @@
 
 (def new-note-params (s/keys :req-un [:note/text :note/temp-id]))
 
+(def edit-note-params (s/keys :req-un [:note/text]))
+
+(def resource-command-routes
+  {:middleware [[wrap-routes m/wrap-cast-id]]
+   :handler [{:middleware [[wrap-routes m/wrap-validate-params edit-note-params]]
+              :handler edit-note-route}
+             delete-note-route]})
+
 (defn ->note-routes [db auth]
   {:middleware [[sm/wrap-session auth]
                 [sm/wrap-user-data db]
@@ -70,8 +79,7 @@
    :handler [{:middleware [[wrap-routes m/wrap-validate-params new-note-params]]
               :handler new-note-route}
              query-route
-             {:middleware [[wrap-routes m/wrap-cast-id]]
-              :handler resource-command-routes}]})
+             resource-command-routes]})
 
 (defn ->import-route [db auth]
   {:middleware [[sm/wrap-session auth]

@@ -1,5 +1,6 @@
 (ns seshat.database.impl.fake
-  (:require [seshat.database.protocols :as p]))
+  (:require [seshat.database.protocols :as p]
+            [seshat.spec.notes :as s]))
 
 (def now #(java.util.Date.))
 
@@ -20,9 +21,11 @@
         note))
     p/ReadNote
     (read-note [_ id]
-      (first (filter (comp #{id} :id)
-                     (filter (comp #{user-id} :user-id)
-                             @fake-database))))
+      (->> @fake-database
+           (filter (comp #{user-id} :user-id))
+           (filter (comp #{id} :id))
+           (first)
+           (s/trim)))
     p/EditNote
     (edit-note! [this id text]
       (locking fake-database
@@ -33,7 +36,7 @@
                                         (remove (comp #{id} :id))
                                         (cons updated)
                                         (vec))))
-            updated))))
+            (s/trim updated)))))
     p/DeleteNote
     (delete-note! [_ id]
       (locking fake-database
@@ -53,9 +56,12 @@
                             :id (swap! fake-id-gen inc)
                             :user-id user-id)]
             (swap! fake-database conj note)
-            note))))
+            (s/trim note)))))
     p/QueryNotes
-    (query [db _] (filter (comp #{user-id} :user-id) @fake-database))))
+    (query [db _]
+      (->> @fake-database
+           (filter (comp #{user-id} :user-id))
+           (map s/trim)))))
 
 (def fake-user-data
   (reify p/UserFilter (user-filter [_ user-id] (fake-user-database user-id))))

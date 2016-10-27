@@ -6,7 +6,22 @@
 
               [seshat.handlers.http]
               [seshat.handlers.session]
-              [seshat.db.auth :as auth]))
+              [seshat.db.auth :as auth]
+
+              [clojure.spec :as s]
+              [seshat.spec.client]))
+
+(defn check-and-throw
+  "Throw an exception if db doesn't have a valid spec."
+  [spec db]
+  (when-not (s/valid? spec db)
+    (let [explain-data (s/explain-data spec db)]
+      (throw (ex-info (str "Spec check failed: " explain-data) explain-data)))))
+
+(def validate-spec-mw
+  (if config/debug?
+    (re-frame/after (fn [db & _] (check-and-throw :client/db db)))
+    []))
 
 (defn reg-event-re-dispatch
   ([event-key handler] (reg-event-re-dispatch event-key [] handler))
@@ -21,7 +36,7 @@
 
 (re-frame/reg-event-fx
  :initialize
- (re-frame/inject-cofx :session)
+ [validate-spec-mw (re-frame/inject-cofx :session)]
  (fn  [{:keys [session]} _]
    {:db (db/initial-data {:session session})
     :dispatch [:initial-login-check]}))
@@ -42,9 +57,9 @@
    :on-auth-failure [:end-session]
    :on-failure [:FIXME-generic-fail]})
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :pull-initial-data
- (constantly {:dispatch [:http full-query-request]}))
+ (constantly {:http full-query-request}))
 
 (reg-event-re-dispatch
  :query-result
@@ -53,16 +68,19 @@
 
 (re-frame/reg-event-db
  :add-local-note
+ validate-spec-mw
  (fn [db [_ note]]
    (db/add-note db note)))
 
 (re-frame/reg-event-db
  :click-tag
+ validate-spec-mw
  (fn [db [_ tag]]
    (db/click-tag db tag)))
 
 (re-frame/reg-event-db
  :search
+ validate-spec-mw
  (fn [db [_ text]]
    (db/search-text db text)))
 
@@ -96,16 +114,19 @@
 
 (re-frame/reg-event-db
  :update-local-note
+ validate-spec-mw
  (fn [db [_ note]]
    (db/edit-note db note)))
 
 (re-frame/reg-event-db
  :start-editing-note
+ validate-spec-mw
  (fn [db [_ note]]
    (assoc-in db [:data/display :display/currently-editing] note)))
 
 (re-frame/reg-event-db
  :cancel-editing-note
+ validate-spec-mw
  (fn [db [_ note]]
    (assoc-in db [:data/display :display/currently-editing] nil)))
 
@@ -116,17 +137,17 @@
      {:update-local-note note
       :remote-edit-note note})))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :remote-edit-note
  (fn [_ [_ note]]
-   {:dispatch [:http {:method :put
-                      :uri (str "/command/edit_note/" (:id note))
-                      :headers {"content-type" "application/edn"}
-                      :body (pr-str note)
-                      :response-format (edn-response-format)
-                      :on-success [:update-local-note]
-                      :on-auth-failure [:end-session]
-                      :on-failure [:FIXME-generic-fail]}]}))
+   {:http {:method :put
+           :uri (str "/command/edit_note/" (:id note))
+           :headers {"content-type" "application/edn"}
+           :body (pr-str note)
+           :response-format (edn-response-format)
+           :on-success [:update-local-note]
+           :on-auth-failure [:end-session]
+           :on-failure [:FIXME-generic-fail]}}))
 
 (reg-event-re-dispatch
  :delete-note
@@ -136,23 +157,25 @@
 
 (re-frame/reg-event-db
  :delete-local-note
+ validate-spec-mw
  (fn [db [_ note]]
    (db/delete-note db note)))
 
-(re-frame/reg-event-fx
+(reg-event-re-dispatch
  :remote-delete-note
  (fn [_ [_ note]]
-   {:dispatch [:http {:method :delete
-                      :uri (str "/command/delete_note/" (:id note))
-                      :body "{}"
-                      :headers {"content-type" "application/edn"}
-                      :response-format (edn-response-format)
-                      :on-success [:FIXME-generic-success]
-                      :on-auth-failure [:end-session]
-                      :on-failure [:FIXME-generic-fail]}]}))
+   {:http {:method :delete
+           :uri (str "/command/delete_note/" (:id note))
+           :body "{}"
+           :headers {"content-type" "application/edn"}
+           :response-format (edn-response-format)
+           :on-success [:FIXME-generic-success]
+           :on-auth-failure [:end-session]
+           :on-failure [:FIXME-generic-fail]}}))
 
 (re-frame/reg-event-fx
  :upload-file
+ validate-spec-mw
  (fn [fx [_ file]]
    {:dispatch [:http {:method :post
                       :uri "/import/fetchnotes"
@@ -165,12 +188,14 @@
 
 (re-frame/reg-event-fx
  :upload-success
+ validate-spec-mw
  (fn [fx [_ result]]
    {:dispatch [:query-result result]
     :db (assoc-in (:db fx) [:data/display :display/currently-uploading] false)}))
 
 (re-frame/reg-event-fx
  :upload-failure
+ validate-spec-mw
  (fn [fx _]
    {:db (-> (:db fx)
             (assoc-in [:data/display :display/currently-uploading] false)
@@ -179,6 +204,7 @@
 
 (re-frame/reg-event-db
  :clear-upload-error
+ validate-spec-mw
  (fn [db _]
    (assoc-in db [:data/display :display/upload-error] false)))
 
@@ -207,12 +233,14 @@
 
 (re-frame/reg-event-fx
  :failed-login
+ validate-spec-mw
  (fn [{:keys [db]} _]
    {:db (auth/login-fail db true)
     :dispatch-later [{:ms 5000 :dispatch [:clear-failed-login]}]}))
 
 (re-frame/reg-event-db
  :clear-failed-login
+ validate-spec-mw
  (fn [db _] (auth/login-fail db false)))
 
 (reg-event-re-dispatch

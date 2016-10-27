@@ -16,16 +16,20 @@
   [{:keys [on-success on-failure]} response]
   (if (<= 400 (:status response))
     (re-frame/dispatch (conj on-failure response)) ;; TODO this might
-    ;; not be correct (see below), don't care atm
+    ;; not be correct (see below), don't hacare atm
     (re-frame/dispatch (conj on-success (:body response)))))
 
 (defn fake-http-request
   [request]
-  (let [resp-handlers (select-keys request [:on-success :on-failure])]
-     (->> request
-          (ajax->ring-req)
-          (handler)
-          (ring-resp->ajax)
-          (dispatch-result resp-handlers))))
+  (->> request
+       (ajax->ring-req)
+       (handler)
+       (ring-resp->ajax)))
 
-(re-frame/reg-fx :http-xhrio fake-http-request)
+(re-frame/reg-fx
+ :http-xhrio
+ (fn [request]
+   (let [resp-handlers (select-keys request [:on-success :on-failure])]
+     (->> request
+          (fake-http-request)
+          (dispatch-result resp-handlers)))))

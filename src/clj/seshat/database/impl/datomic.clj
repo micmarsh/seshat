@@ -16,22 +16,36 @@
         (d/entity (tx-id db))
         (:db/txInstant))))
 
+(defn new-note [text]
+  {:note/text text
+   :note/id (java.util.UUID/randomUUID)
+   :db/id #db/id[:db.part/user]})
+
 (defrecord user-notes [connection user-id]
   p/NewNote
   (new-note! [{:keys [connection]} text]
-    (let [tx-result @(d/transact connection [{:note/text text
-                                              :note/id :note.id/counter
-                                              :db/id #db/id[:db.part/user]}])
+    (let [tx-result @(d/transact connection [(new-note text)])
           time (result-time tx-result)
           saved-note (result-note tx-result)]
-      {:id (:db/id saved-note)
+      {:id (:note/id saved-note)
        :text (:note/text saved-note)
        :created time
        :updated time}))
   p/ReadNote
   (read-note [{:keys [connection]} id]
-    (let [db (d/db connection)]
-      (d/entity db id))))
+    (let [db (d/db connection)
+          entity-id (ffirst (d/q [:find '?e :where ['?e :note/id id]] db))
+          note (d/entity db entity-id)
+          [times] (d/q '[:find ?e (max ?tx-time) (min ?tx-time)
+                       :in $ ?e
+                       :where
+                       [?e _ _ ?tx _]
+                       [?tx :db/txInstant ?tx-time]]
+                     (d/history db) entity-id)]
+      {:id (:note/id note)
+       :text (:note/text note)
+       :created (last times)
+       :updated (second times)})))
 
 (comment
   
@@ -44,43 +58,19 @@
       :db/doc "A note's text"
       :db.install/_attribute :db.part/db}
      
-     {:db/id :note.id/counter :value 0}
-     {:db/id (d/tempid :db.part/user)
-      :db/ident :note.id/increment
-      :db/fn (d/function
-              {:lang "clojure"
-               :params '[db]
-               :code '(let [v (:value (d/entity db :note.id/counter))]
-                        (println "inc" v)
-                        [{:db/id :note.id/counter
-                          :value (inc v)}])})}
-     
      {:db/id #db/id[:db.part/db]
       :db/ident :note/id
-      :db/valueType :db.type/bigint
+      :db/valueType :db.type/uuid
       :db/cardinality :db.cardinality/one
-      :db/doc "A note's publically identifiable id"
+      :db/doc "A note's unique identifier"
       :db.install/_attribute :db.part/db}])
 
-  (def id-schema
-    [     
-     {:db/id :note.id/counter :value 0}
-     {:db/id (d/tempid :db.part/user)
-      :db/ident :note.id/increment
-      :db/fn (d/function
-              {:lang "clojure"
-               :params '[db]
-               :code '(let [v (:value (d/entity db :note.id/counter))]
-                        (println "inc" v)
-                        [{:db/id :note.id/counter
-                          :value (inc v)}])})}
-     
-     {:db/id #db/id[:db.part/db]
-      :db/ident :note/id
-      :db/valueType :db.type/bigint
-      :db/cardinality :db.cardinality/one
-      :db/doc "A note's publically identifiable id"
-      :db.install/_attribute :db.part/db}])
+  (def uri "datomic:mem://notes-n-stuff")
+
+  (d/create-database uri) (def connection (d/connect uri))
+  
+  (def notes-store (->user-notes connection nil))
+  
   ;; TODO USER SHIT! Interesting business, and promising for
   ;; extensibility
   ;;  * can "not worry" about all that shit while currently just

@@ -11,10 +11,9 @@
   (c/contains? (set (tags note)) tag))
 
 (defn == [& notes]
-  (let [fake-ids (atom 0)]
-    ;; ^ generate fake ids so multiple nil :ids don't cause false match
-    (or (apply c/== (map #(:id % (swap! fake-ids dec)) notes))
-        (apply = (map #(:temp-id % (gensym)) notes)))))
+  ;; generate fake ids w/ gensym so multiple nils don't cause false match
+  (or (apply = (map #(:id % (gensym)) notes))
+      (apply = (map #(:temp-id % (gensym)) notes))))
 
 (defn id [{:keys [id temp-id] :as note}]
   (or id temp-id

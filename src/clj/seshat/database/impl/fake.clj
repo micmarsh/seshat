@@ -6,14 +6,14 @@
 
 (def fake-database (atom []))
 
-(def fake-id-gen (atom 0))
+(defn fake-id-gen [] (java.util.UUID/randomUUID))
 
 (defn fake-user-database [user-id]
   (reify
     p/NewNote
     (new-note! [_ text]
       (let [note {:text text
-                  :id (swap! fake-id-gen inc)
+                  :id (fake-id-gen)
                   :user-id user-id
                   :created (now)
                   :updated (now)}]
@@ -53,7 +53,7 @@
       (locking fake-database
         (when (empty? (filter (comp #{id} :fetchnotes/id) @fake-database))
           (let [note (assoc data
-                            :id (swap! fake-id-gen inc)
+                            :id (fake-id-gen)
                             :user-id user-id)]
             (swap! fake-database conj note)
             (s/trim note)))))

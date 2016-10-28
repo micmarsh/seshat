@@ -25,7 +25,7 @@
           (resp/created "/command/new_note" result))))
 
 (def edit-note-route
-  (PUT "/command/edit_note/:id" [id text :as r]
+  (PUT "/command/edit_note" [id text :as r]
        (if (some? text)
          (if-let [updated (p/edit-note! (:db r) id text)]
            (resp/response updated)
@@ -33,7 +33,7 @@
          (bad-request "ur data sux"))))
 
 (def delete-note-route
-  (DELETE "/command/delete_note/:id" [id :as r]
+  (DELETE "/command/delete_note" [id :as r]
           (let [deleted (p/delete-note! (:db r) id)]
             (if (pos? (:deleted deleted))
               (resp/response deleted)
@@ -60,13 +60,15 @@
 
 (def new-note-params (s/keys :req-un [:note/text :note/temp-id]))
 
-(def edit-note-params (s/keys :req-un [:note/text]))
+(def edit-note-params (s/keys :req-un [:note/text :note/id]))
+
+(def delete-note-params (s/keys :req-un [:note/id]))
 
 (def resource-command-routes
-  {:middleware [[wrap-routes m/wrap-cast-id]]
-   :handler [{:middleware [[wrap-routes m/wrap-validate-params edit-note-params]]
-              :handler edit-note-route}
-             delete-note-route]})
+  [{:middleware [[wrap-routes m/wrap-validate-params edit-note-params]]
+    :handler edit-note-route}
+   {:middleware [[wrap-routes m/wrap-validate-params delete-note-params]]
+    :handler delete-note-route}])
 
 (defn ->note-routes [db auth]
   {:middleware [[sm/wrap-session auth]

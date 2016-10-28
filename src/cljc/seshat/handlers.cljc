@@ -141,7 +141,7 @@
  :remote-edit-note
  (fn [_ [_ note]]
    {:http {:method :put
-           :uri (str "/command/edit_note/" (:id note))
+           :uri "/command/edit_note"
            :headers {"content-type" "application/edn"}
            :body (pr-str note)
            :response-format (edn-response-format)
@@ -165,8 +165,8 @@
  :remote-delete-note
  (fn [_ [_ note]]
    {:http {:method :delete
-           :uri (str "/command/delete_note/" (:id note))
-           :body "{}"
+           :uri "/command/delete_note" 
+           :body (pr-str note)
            :headers {"content-type" "application/edn"}
            :response-format (edn-response-format)
            :on-success [:FIXME-generic-success]

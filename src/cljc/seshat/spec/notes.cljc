@@ -2,7 +2,7 @@
   (:require [clojure.spec :as s]))
 
 (s/def :note/text string?)
-(s/def :note/id int?)
+(s/def :note/id uuid?)
 (s/def :note/temp-id symbol?)
 (s/def :note/created inst?)
 (s/def :note/updated inst?)
@@ -16,7 +16,7 @@
            (s/keys :req-un [:note/id :note/created :note/updated])))
 
 (def ^:const sample
-  {:id 1
+  {:id #uuid "a8127d69-b91a-4b90-ba40-938af8a2db26"
    :temp-id 'temp
    :text "sample"
    :created #inst "2016-01-01"

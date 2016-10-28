@@ -24,8 +24,7 @@
 
 (def new-note (partial request :post "/command/new_note"))
 
-(defn edit-note [id data]
-  (request :put (str "/command/edit_note/" id) data))
+(def edit-note (partial request :put "/command/edit_note"))
 
 (defn predicate [error]
   (-> error :clojure.spec/problems first :pred))
@@ -49,11 +48,11 @@
   (testing "Edit note route"
     (let [note (:body (fake-http-request (new-note {:text "hello" :temp-id 'temp})))]
       
-      (let [no-text (fake-http-request (edit-note (:id note) {}))]
+      (let [no-text (fake-http-request (edit-note {:id (:id note)}))]
         (is (= 400 (:status no-text)))
         (is (= '(contains? % :text) (predicate (:body no-text)))))
       
-      (let [good-response (fake-http-request (edit-note (:id note) {:text "goodbye"}))]
+      (let [good-response (fake-http-request (edit-note {:id (:id note) :text "goodbye"}))]
         (is (= 200 (:status good-response)))
         (is (= {:text "goodbye" :id (:id note)}
                (select-keys (:body good-response) [:id :text])))))))

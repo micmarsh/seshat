@@ -16,43 +16,49 @@
         (d/entity (tx-id db))
         (:db/txInstant))))
 
-(defn note-tx
-  ([text] (note-tx (java.util.UUID/randomUUID) text))
-  ([id text]
-   {:db/id (d/tempid :db.part/user)
-    :note/text text
-    :note/id id}))
-
-(defn existing-notes [query user-id]
-  (into query
-        ['[?e :note/deleted? false]
-         ['?e :note/user-id user-id]]))
-
-(defn user-database [{:keys [db connection]}]
-  (or db (d/db connection)))
+(defn note-id
+  [db note-id]
+  (ffirst (d/q [:find '?e :where ['?e :note/id note-id]] db)))
 
 (def ^:const timestamp-q
-  '[:find ?e (min ?tx-time) (max ?tx-time) 
+  '[:find ?e (min ?tx-time) (max ?tx-time)
     :in $ ?e
     :where
     [?e _ _ ?tx _]
     [?tx :db/txInstant ?tx-time]])
 
-(defn -read-note [db user-id id]
-  (when-let [entity-id (ffirst (d/q (existing-notes [:find '?e :where ['?e :note/id id]] user-id) db))]
-    (let [note (d/entity db entity-id)
-          [times] (d/q timestamp-q (d/history db) entity-id)]
-      {:id (:note/id note)
-       :text (:note/text note)
-       :created (second times)
-       :updated (last times)})))
+(defn entity-times [db entity-id]
+  (let [[times] (d/q timestamp-q (d/history db) entity-id)]
+    {:created (second times)
+     :updated (last times)}))
 
-(defrecord user-notes [connection user-id]
+(defn note-times [db id]
+  (when-let [note-entity (note-id db id)]
+    (entity-times db note-entity)))
+
+(defn read-note-raw
+  [db id]
+  (when-let [note-entity (note-id db id)]
+    (let [note (d/entity db note-entity)]
+      {:id (:note/id note)
+       :text (:note/text note)})))
+
+(defn temp-id [data]
+  (if (and (map? data) (not (contains? data :db/id)))
+    (assoc data :db/id (d/tempid :db.part/user))
+    data))
+
+(defn transact
+  [conn data]
+  (d/transact conn (mapv temp-id data)))
+
+(defrecord user-notes [connection user-id user-db full-db]
   p/NewNote
   (new-note! [{:keys [connection]} text]
-    (let [tx-result @(d/transact connection [(assoc (note-tx text)
-                                                    :note/deleted? false
-                                                    :note/user-id user-id)])
+    (let [tx-result @(transact connection [#:note{:id (java.util.UUID/randomUUID)
+                                                  :text text
+                                                  :deleted? false
+                                                  :user-id user-id}])
           time (result-time tx-result)
           saved-note (result-note tx-result)]
       {:id (:note/id saved-note)
@@ -61,32 +67,55 @@
        :updated time}))
   p/ReadNote
   (read-note [this id]
-    (-read-note (user-database this) user-id id))
+    (let [note (read-note-raw user-db id)]
+      (merge note (note-times full-db id))))
   p/EditNote
   (edit-note! [{:keys [connection] :as this} id text]
-    (let [db (user-database this)]
-      (when-let [note (-read-note db user-id id)]
-        (let [tx-result @(d/transact connection [(note-tx id text)])]
-          (assoc note
-                 :text text
-                 :updated (result-time tx-result))))))
+    (when-let [note (read-note-raw user-db id)]
+      (let [tx-result @(transact connection [#:note{:id id :text text}])]
+        (merge note
+               (note-times (:db-after tx-result) id)
+               {:text text
+                :updated (result-time tx-result)}))))
   p/DeleteNote
   (delete-note! [{:keys [connection] :as this} id]
-    (let [db (user-database this)]
-      (if-let [note (-read-note db user-id id)]
-        (do @(d/transact connection [{:db/id (d/tempid :db.part/user)
-                                      :note/deleted? true
-                                      :note/id id}])
-            {:deleted 1})
-        {:deleted 0})))
+    (if-let [note (read-note-raw user-db id)]
+      (do @(transact connection [#:note{:deleted? true :id id}])
+          {:deleted 1})
+      {:deleted 0}))
   ;; TODO p/ImportNote
   p/QueryNotes
   (query [this _]
-    (let [db (user-database this)]
-      (mapv (comp (partial -read-note db user-id) :note/id first)
-            (d/q (existing-notes [:find '(pull ?e [:note/id]) :where] user-id) db)))))
+    (mapv (fn [[entity]]
+            (let [id (:note/id entity)]
+              (merge (read-note-raw user-db id)
+                     (note-times full-db id))))
+          (d/q '[:find (pull ?e [:note/id]) :where [?e :note/id]] user-db))))
+
+(defn user-db
+  [db user-id]
+  (d/filter db
+            (fn [db datom]
+              (->> (:e datom)
+                   (d/entity db)
+                   (:note/user-id)
+                   (= user-id)))))
+
+(defn undeleted-db
+  [db]
+  (d/filter db
+            (fn [db datom]
+              (->> (:e datom)
+                   (d/entity db)
+                   (:note/deleted)
+                   (not)))))
 
 (defrecord user-data [connection]
   p/UserFilter
   (user-filter [_ user-id]
-    (->user-notes connection user-id)))
+    (let [full-db (d/db connection)]
+      (map->user-notes
+       {:connection connection
+        :user-id user-id
+        :full-db full-db
+        :user-db (-> full-db (user-db user-id) (undeleted-db))}))))

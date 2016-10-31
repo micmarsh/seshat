@@ -1,6 +1,7 @@
 (ns seshat.handler-test
   (:require [clojure.test :refer [deftest is run-tests testing use-fixtures]]
             [seshat.test.http :refer [fake-http-request]]
+            [clojure.spec :as s]
 
             [seshat.auth.impl.fake :refer [fake-auth]]
             [seshat.session.protocols :as sp]))
@@ -43,7 +44,8 @@
     (let [full-note {:text "hello" :temp-id 'temp}
           good-response (fake-http-request (new-note full-note))]
       (is (= 201 (:status good-response)))
-      (is (= full-note (select-keys (:body good-response) [:text :temp-id])))))
+      (is (= full-note (select-keys (:body good-response) [:text :temp-id])))
+      (is (s/valid? :note/full (:body good-response)))))
 
   (testing "Edit note route"
     (let [note (:body (fake-http-request (new-note {:text "hello" :temp-id 'temp})))]
@@ -55,4 +57,5 @@
       (let [good-response (fake-http-request (edit-note {:id (:id note) :text "goodbye"}))]
         (is (= 200 (:status good-response)))
         (is (= {:text "goodbye" :id (:id note)}
-               (select-keys (:body good-response) [:id :text])))))))
+               (select-keys (:body good-response) [:id :text])))
+        (is (s/valid? :note/full (:body good-response)))))))

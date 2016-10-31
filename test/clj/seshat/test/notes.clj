@@ -1,5 +1,5 @@
 (ns seshat.test.notes
-  (:require [seshat.database.impl.fake :as db]
+  (:require [seshat.dev.server :refer [uri]]
             [seshat.database.impl.datomic :as datom]
             [datomic.api :as d]
             [seshat.auth.impl.fake :as auth]))
@@ -15,12 +15,12 @@
        :updated (last times)})))
 
 (defn all-notes []
-  (let [db (d/db (d/connect db/uri))]
+  (let [db (d/db (d/connect uri))]
     (mapv (comp (partial -read-note db) :note/id first)
           (d/q [:find '(pull ?e [:note/id]) :where '[?e :note/deleted? false]] db))))
 
 (defn clear! []
-  (let [conn (d/connect db/uri)
+  (let [conn (d/connect uri)
         notes (all-notes)]
     @(d/transact conn (mapv (fn [note]
                               {:db/id (d/tempid :db.part/user)

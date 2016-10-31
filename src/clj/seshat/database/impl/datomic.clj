@@ -54,7 +54,7 @@
 
 (defrecord user-notes [connection user-id user-db full-db]
   p/NewNote
-  (new-note! [{:keys [connection]} text]
+  (new-note! [this text]
     (let [tx-result @(transact connection [#:note{:id (java.util.UUID/randomUUID)
                                                   :text text
                                                   :deleted? false
@@ -67,10 +67,10 @@
        :updated time}))
   p/ReadNote
   (read-note [this id]
-    (let [note (read-note-raw user-db id)]
+    (when-let [note (read-note-raw user-db id)]
       (merge note (note-times full-db id))))
   p/EditNote
-  (edit-note! [{:keys [connection] :as this} id text]
+  (edit-note! [this id text]
     (when-let [note (read-note-raw user-db id)]
       (let [tx-result @(transact connection [#:note{:id id :text text}])]
         (merge note
@@ -78,7 +78,7 @@
                {:text text
                 :updated (result-time tx-result)}))))
   p/DeleteNote
-  (delete-note! [{:keys [connection] :as this} id]
+  (delete-note! [this id]
     (if-let [note (read-note-raw user-db id)]
       (do @(transact connection [#:note{:deleted? true :id id}])
           {:deleted 1})
@@ -119,3 +119,28 @@
         :user-id user-id
         :full-db full-db
         :user-db (-> full-db (user-db user-id) (undeleted-db))}))))
+
+(def ^:const note-schema
+  [{:db/ident :note/id
+    :db/valueType :db.type/uuid
+    :db/unique :db.unique/identity
+    :db/doc "A note's unique identifier"}
+   {:db/ident :note/user-id
+    :db/valueType :db.type/uuid
+    :db/doc "A note's owner"}
+   {:db/ident :note/text
+    :db/valueType :db.type/string
+    :db/fulltext true
+    :db/doc "A note's text"}
+   {:db/ident :note/deleted?
+    :db/valueType :db.type/boolean
+    :db/doc "Whether a note has been \"deleted\" by a user"}])
+
+(defn initialize [uri]
+  (when (d/create-database uri)
+    @(d/transact (d/connect uri)
+                 (mapv #(assoc % :db/id (d/tempid :db.part/db)
+                               :db.install/_attribute :db.part/db
+                               :db/cardinality :db.cardinality/one)
+                       note-schema)))
+  (->user-data (d/connect uri)))

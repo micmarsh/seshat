@@ -26,4 +26,6 @@
 
 (def ^:const spec-keys (keys sample))
 
-(defn trim [note] (select-keys note spec-keys))
+(defn trim [note]
+  (let [un-nsed (into {} (for [[k v] note] [(keyword (name k)) v]))]
+    (select-keys un-nsed spec-keys)))

@@ -1,6 +1,7 @@
 (defproject seshat "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure        "1.9.0-alpha10"]
                  [org.clojure/clojurescript  "1.9.229"]
+                 [com.datomic/datomic-pro "0.9.5404"]
                  [cheshire "5.6.3"]
                  [reagent "0.6.0-rc"]
                  [binaryage/devtools "0.6.1"]
@@ -24,6 +25,10 @@
              :ring-handler seshat.dev.server/handler}
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+
+  :repositories {"my.datomic.com" {:url "https://my.datomic.com/repo"
+                                   :username :env/DATOMIC_USERNAME
+                                   :password :env/DATOMIC_PASSWORD}}
 
   :profiles
   {:dev

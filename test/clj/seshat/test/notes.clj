@@ -1,12 +1,33 @@
 (ns seshat.test.notes
-  (:require [seshat.database.impl.fake :as db]
+  (:require [seshat.dev.server :refer [uri]]
+            [seshat.database.impl.datomic :as datom]
+            [datomic.api :as d]
             [seshat.auth.impl.fake :as auth]))
 
-(defn all-notes [] @db/fake-database)
+(defn -read-note [db id]
+  (when-let [entity-id (ffirst (d/q [:find '?e :where ['?e :note/id id] '[?e :note/deleted? false]] db))]
+    (let [note (d/entity db entity-id)
+          [times] (d/q datom/timestamp-q (d/history db) entity-id)]
+      {:id (:note/id note)
+       :text (:note/text note)
+       :user-id (:note/user-id note)
+       :created (second times)
+       :updated (last times)})))
 
-(def clear! #(reset! db/fake-database []))
+(defn all-notes []
+  (let [db (d/db (d/connect uri))]
+    (mapv (comp (partial -read-note db) :note/id first)
+          (d/q [:find '(pull ?e [:note/id]) :where '[?e :note/deleted? false]] db))))
+
+(defn clear! []
+  (let [conn (d/connect uri)
+        notes (all-notes)]
+    @(d/transact conn (mapv (fn [note]
+                              {:db/id (d/tempid :db.part/user)
+                               :note/deleted? true
+                               :note/id (:id note)})
+                            notes))))
 
 (defn note
-  ([id] (note id @db/fake-database))
-  ([id note-list]
-   (first (filter (comp #{id} :id) note-list))))
+  ([id] (note id (all-notes)))
+  ([id note-list] (first (filter (comp #{id} :id) note-list))))

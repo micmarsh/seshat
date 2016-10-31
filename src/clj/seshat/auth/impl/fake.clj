@@ -6,8 +6,6 @@
 
 (def users (atom []))
 
-(def user-ids (atom 0))
-
 (defn new-fake-session [] (str (Math/abs (hash (rand)))))
 
 (def fake-auth
@@ -18,7 +16,7 @@
     sp/Save
     (save-session! [_ session]
       (swap! sessions assoc (:id session) session))
-    sp/NewFromUser
+    sp/NewFromUser 
     (from-user [_ user]
       {:id (new-fake-session) :user user})
     sp/UserId
@@ -28,7 +26,7 @@
     p/Register
     (register! [_ email pw]
       (when-not (first (filter (comp #{email} :email) @users))
-        (let [new-user {:id (swap! user-ids inc)
+        (let [new-user {:id (java.util.UUID/randomUUID)
                         :email email
                         :password pw}]
           (swap! users conj new-user)

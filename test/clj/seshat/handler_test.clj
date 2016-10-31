@@ -5,7 +5,7 @@
             [seshat.auth.impl.fake :refer [fake-auth]]
             [seshat.session.protocols :as sp]))
 
-(def ^:const fake-user {:id -1})
+(def ^:const fake-user {:id (java.util.UUID/randomUUID)})
 (def ^:dynamic *session-id* nil)
 
 (use-fixtures :once

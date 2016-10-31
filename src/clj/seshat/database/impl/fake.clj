@@ -1,67 +1,37 @@
 (ns seshat.database.impl.fake
-  (:require [seshat.database.protocols :as p]
-            [seshat.spec.notes :as s]))
+  (:require [datomic.api :as d]
+            [seshat.database.impl.datomic :refer [->user-data]]))
+  
+(def uri "datomic:mem://fake")
 
-(def now #(java.util.Date.))
+(when (d/create-database uri)
+  (let [note-schema
+        [{:db/id #db/id[:db.part/db]
+          :db/ident :note/id
+          :db/valueType :db.type/uuid
+          :db/unique :db.unique/identity 
+          :db/cardinality :db.cardinality/one
+          :db/doc "A note's unique identifier"
+          :db.install/_attribute :db.part/db}
+         {:db/id #db/id[:db.part/db]
+          :db/ident :note/user-id
+          :db/valueType :db.type/uuid
+          :db/cardinality :db.cardinality/one
+          :db/doc "A note's owner"
+          :db.install/_attribute :db.part/db}
+         {:db/id #db/id[:db.part/db]
+          :db/ident :note/text
+          :db/valueType :db.type/string
+          :db/cardinality :db.cardinality/one
+          :db/fulltext true
+          :db/doc "A note's text"
+          :db.install/_attribute :db.part/db}
+         {:db/id #db/id[:db.part/db]
+          :db/ident :note/deleted?
+          :db/valueType :db.type/boolean
+          :db/cardinality :db.cardinality/one
+          :db/doc "Whether a note has been \"deleted\" by a user"
+          :db.install/_attribute :db.part/db}]]
+    @(d/transact (d/connect uri) note-schema)))
 
-(def fake-database (atom []))
-
-(defn fake-id-gen [] (java.util.UUID/randomUUID))
-
-(defn fake-user-database [user-id]
-  (reify
-    p/NewNote
-    (new-note! [_ text]
-      (let [note {:text text
-                  :id (fake-id-gen)
-                  :user-id user-id
-                  :created (now)
-                  :updated (now)}]
-        (swap! fake-database conj note)
-        note))
-    p/ReadNote
-    (read-note [_ id]
-      (->> @fake-database
-           (filter (comp #{user-id} :user-id))
-           (filter (comp #{id} :id))
-           (first)
-           (s/trim)))
-    p/EditNote
-    (edit-note! [this id text]
-      (locking fake-database
-        (when-let [note (p/read-note this id)]
-          (let [updated (assoc note :text text :updated (now))]
-            (swap! fake-database (fn [data]
-                                   (->> data
-                                        (remove (comp #{id} :id))
-                                        (cons updated)
-                                        (vec))))
-            (s/trim updated)))))
-    p/DeleteNote
-    (delete-note! [_ id]
-      (locking fake-database
-        (let [before @fake-database]
-          (swap! fake-database (fn [data]
-                                 (->> data
-                                      (remove (fn [n]
-                                                (and (= user-id (:user-id n))
-                                                     (= id (:id n)))))          
-                                      (vec))))
-          {:deleted (- (count before) (count @fake-database))})))
-    p/ImportNote
-    (import-note! [_ {id :fetchnotes/id :as data}]
-      (locking fake-database
-        (when (empty? (filter (comp #{id} :fetchnotes/id) @fake-database))
-          (let [note (assoc data
-                            :id (fake-id-gen)
-                            :user-id user-id)]
-            (swap! fake-database conj note)
-            (s/trim note)))))
-    p/QueryNotes
-    (query [db _]
-      (->> @fake-database
-           (filter (comp #{user-id} :user-id))
-           (map s/trim)))))
-
-(def fake-user-data
-  (reify p/UserFilter (user-filter [_ user-id] (fake-user-database user-id))))
+(def fake-user-data (->user-data (d/connect uri)))

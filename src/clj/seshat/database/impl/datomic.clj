@@ -16,15 +16,43 @@
         (d/entity (tx-id db))
         (:db/txInstant))))
 
-(defn new-note [text]
-  {:note/text text
-   :note/id (java.util.UUID/randomUUID)
-   :db/id #db/id[:db.part/user]})
+(defn note-tx
+  ([text] (note-tx (java.util.UUID/randomUUID) text))
+  ([id text]
+   {:db/id (d/tempid :db.part/user)
+    :note/text text
+    :note/id id}))
+
+(defn existing-notes [query user-id]
+  (into query
+        ['[?e :note/deleted? false]
+         ['?e :note/user-id user-id]]))
+
+(defn user-database [{:keys [db connection]}]
+  (or db (d/db connection)))
+
+(def ^:const timestamp-q
+  '[:find ?e (min ?tx-time) (max ?tx-time) 
+    :in $ ?e
+    :where
+    [?e _ _ ?tx _]
+    [?tx :db/txInstant ?tx-time]])
+
+(defn -read-note [db user-id id]
+  (when-let [entity-id (ffirst (d/q (existing-notes [:find '?e :where ['?e :note/id id]] user-id) db))]
+    (let [note (d/entity db entity-id)
+          [times] (d/q timestamp-q (d/history db) entity-id)]
+      {:id (:note/id note)
+       :text (:note/text note)
+       :created (second times)
+       :updated (last times)})))
 
 (defrecord user-notes [connection user-id]
   p/NewNote
   (new-note! [{:keys [connection]} text]
-    (let [tx-result @(d/transact connection [(new-note text)])
+    (let [tx-result @(d/transact connection [(assoc (note-tx text)
+                                                    :note/deleted? false
+                                                    :note/user-id user-id)])
           time (result-time tx-result)
           saved-note (result-note tx-result)]
       {:id (:note/id saved-note)
@@ -32,51 +60,33 @@
        :created time
        :updated time}))
   p/ReadNote
-  (read-note [{:keys [connection]} id]
-    (let [db (d/db connection)
-          entity-id (ffirst (d/q [:find '?e :where ['?e :note/id id]] db))
-          note (d/entity db entity-id)
-          [times] (d/q '[:find ?e (max ?tx-time) (min ?tx-time)
-                       :in $ ?e
-                       :where
-                       [?e _ _ ?tx _]
-                       [?tx :db/txInstant ?tx-time]]
-                     (d/history db) entity-id)]
-      {:id (:note/id note)
-       :text (:note/text note)
-       :created (last times)
-       :updated (second times)})))
+  (read-note [this id]
+    (-read-note (user-database this) user-id id))
+  p/EditNote
+  (edit-note! [{:keys [connection] :as this} id text]
+    (let [db (user-database this)]
+      (when-let [note (-read-note db user-id id)]
+        (let [tx-result @(d/transact connection [(note-tx id text)])]
+          (assoc note
+                 :text text
+                 :updated (result-time tx-result))))))
+  p/DeleteNote
+  (delete-note! [{:keys [connection] :as this} id]
+    (let [db (user-database this)]
+      (if-let [note (-read-note db user-id id)]
+        (do @(d/transact connection [{:db/id (d/tempid :db.part/user)
+                                      :note/deleted? true
+                                      :note/id id}])
+            {:deleted 1})
+        {:deleted 0})))
+  ;; TODO p/ImportNote
+  p/QueryNotes
+  (query [this _]
+    (let [db (user-database this)]
+      (mapv (comp (partial -read-note db user-id) :note/id first)
+            (d/q (existing-notes [:find '(pull ?e [:note/id]) :where] user-id) db)))))
 
-(comment
-  
-  (def schema
-    [{:db/id #db/id[:db.part/db]
-      :db/ident :note/text
-      :db/valueType :db.type/string
-      :db/cardinality :db.cardinality/one
-      :db/fulltext true
-      :db/doc "A note's text"
-      :db.install/_attribute :db.part/db}
-     
-     {:db/id #db/id[:db.part/db]
-      :db/ident :note/id
-      :db/valueType :db.type/uuid
-      :db/cardinality :db.cardinality/one
-      :db/doc "A note's unique identifier"
-      :db.install/_attribute :db.part/db}])
-
-  (def uri "datomic:mem://notes-n-stuff")
-
-  (d/create-database uri) (def connection (d/connect uri))
-  
-  (def notes-store (->user-notes connection nil))
-  
-  ;; TODO USER SHIT! Interesting business, and promising for
-  ;; extensibility
-  ;;  * can "not worry" about all that shit while currently just
-  ;; sticking to "user notes"
-  ;;  * then, when time comes can add :note/user db.type/ref. HAWT.
-  ;;  * then user schema and notes from there on out all new notes get
-  ;; their :note/user shit filled out. HAWT!
-  
-  )
+(defrecord user-data [connection]
+  p/UserFilter
+  (user-filter [_ user-id]
+    (->user-notes connection user-id)))

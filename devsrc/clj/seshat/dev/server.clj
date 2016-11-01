@@ -1,16 +1,17 @@
 (ns seshat.dev.server
   (:require [ring.middleware.reload :refer [wrap-reload]]
-            [seshat.database.impl.datomic :refer [initialize]]
-            [seshat.auth.impl.fake :refer [fake-auth]]
+            [seshat.datomic.mem :refer [connection]]
+            [seshat.database.impl.datomic :refer [->user-data]]
+            [seshat.auth.impl.datomic :refer [->auth]]
             [seshat.handler :refer [->routes-data]]
             [ring.handler :as handler]))
 
-(def uri "datomic:mem://fake")
+(def auth (->auth @connection))
 
 (def dev-routes
   (handler/compile
    (->routes-data
-    (initialize uri)
-    fake-auth)))
+    (->user-data @connection)
+    auth)))
 
 (def handler (-> #'dev-routes wrap-reload))

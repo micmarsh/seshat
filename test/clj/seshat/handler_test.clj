@@ -3,17 +3,20 @@
             [seshat.test.http :refer [fake-http-request]]
             [clojure.spec :as s]
 
-            [seshat.auth.impl.fake :refer [fake-auth]]
-            [seshat.session.protocols :as sp]))
+            [seshat.dev.server :refer [auth]]
+            [seshat.auth.user :refer [session-register!]]
+            ;; two nses whose name needs to change, lol^
+            ))
 
-(def ^:const fake-user {:id (java.util.UUID/randomUUID)})
 (def ^:dynamic *session-id* nil)
 
 (use-fixtures :once
   (fn [test]
-    (let [session (sp/from-user fake-auth fake-user)]
-      (sp/save-session! fake-auth session)
-      (binding [*session-id* (sp/id fake-auth session)]
+    (let [session (session-register! auth
+                                     (str (java.util.UUID/randomUUID) "@bar.com")
+                                     "bar")]
+      (assert (some? session))
+      (binding [*session-id* (:session session)]
         (test)))))
 
 (defn request [method uri data]

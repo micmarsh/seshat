@@ -1,7 +1,9 @@
 (ns seshat.database.impl.datomic
   (:require [seshat.database.protocols :as p]
             [datomic.api :as d]
-            [seshat.spec.notes :as s]))
+            [seshat.spec.notes :as s]
+
+            [seshat.datomic.mem :refer [connection]]))
 
 (defn result-note [tx-result]
   {:pre [(= 1 (count (:tempids tx-result)))]}
@@ -119,28 +121,3 @@
         :user-id user-id
         :full-db full-db
         :user-db (-> full-db (user-db user-id) (undeleted-db))}))))
-
-(def ^:const note-schema
-  [{:db/ident :note/id
-    :db/valueType :db.type/uuid
-    :db/unique :db.unique/identity
-    :db/doc "A note's unique identifier"}
-   {:db/ident :note/user-id
-    :db/valueType :db.type/uuid
-    :db/doc "A note's owner"}
-   {:db/ident :note/text
-    :db/valueType :db.type/string
-    :db/fulltext true
-    :db/doc "A note's text"}
-   {:db/ident :note/deleted?
-    :db/valueType :db.type/boolean
-    :db/doc "Whether a note has been \"deleted\" by a user"}])
-
-(defn initialize [uri]
-  (when (d/create-database uri)
-    @(d/transact (d/connect uri)
-                 (mapv #(assoc % :db/id (d/tempid :db.part/db)
-                               :db.install/_attribute :db.part/db
-                               :db/cardinality :db.cardinality/one)
-                       note-schema)))
-  (->user-data (d/connect uri)))

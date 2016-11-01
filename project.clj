@@ -2,6 +2,7 @@
   :dependencies [[org.clojure/clojure        "1.9.0-alpha10"]
                  [org.clojure/clojurescript  "1.9.229"]
                  [com.datomic/datomic-pro "0.9.5404"]
+                 [org.mindrot/jbcrypt "0.3m"]
                  [cheshire "5.6.3"]
                  [reagent "0.6.0-rc"]
                  [binaryage/devtools "0.6.1"]

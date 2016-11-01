@@ -9,7 +9,9 @@
               [seshat.db.auth :as auth]
 
               [clojure.spec :as s]
-              [seshat.spec.client]))
+              [seshat.spec.client]
+
+              [clojure.string :as str]))
 
 (defn check-and-throw
   "Throw an exception if db doesn't have a valid spec."
@@ -83,6 +85,22 @@
  validate-spec-mw
  (fn [db [_ text]]
    (db/search-text db text)))
+
+(defn only-hashtags? [text]
+  (every? #(.startsWith % "#")
+          (str/split text #" ")))
+
+(defn editing [db]
+  (:display/currently-editing (:data/display db)))
+
+(reg-event-re-dispatch
+ :omnibar-dispatch
+ (fn [{:keys [db]} [_ raw-text]]
+   (let [text (str/trim raw-text)]
+     (cond (.startsWith text "search ") {:search (apply str (drop (count "search ") text))}
+           (only-hashtags? text) (mapv (partial vector :click-tag) (str/split text #" "))
+           (boolean (editing db)) [[:edited-note text (editing db)] [:cancel-editing-note]]
+           :else {:new-note text}))))
 
 (reg-event-re-dispatch
  :new-note

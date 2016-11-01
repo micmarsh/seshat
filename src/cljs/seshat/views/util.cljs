@@ -46,6 +46,5 @@
   false)
 
 (defn submit-text [event]
-  (println (input-text event))
   (re-frame/dispatch [:new-note (input-text event)])
   (clear-input event))

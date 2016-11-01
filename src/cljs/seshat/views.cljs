@@ -42,14 +42,41 @@
      [:button {:on-click #(re-frame/dispatch [:delete-note note])}
       "delete"]]))
 
+(def separate-inputs
+  [:div#inputs
+   [new-note-box]
+   [editing-note-box]
+   [search-box]])
+
+(defn omnibar []
+  (let [currently-editing (re-frame/subscribe [:currently-editing])
+        dispatch #(when (and (util/enter? %)
+                             (not (empty? (util/input-text %))))
+                    (re-frame/dispatch [:omnibar-dispatch (util/input-text %)])
+                    (util/clear-input %))]
+    (fn []
+      [:div#omnibar
+       (prn "recalculating omnibar" (:text @currently-editing))
+       (if (nil? @currently-editing)
+         [:textarea {:on-key-up dispatch}]
+         [:div#editing-omnibar
+          [:textarea
+           {:on-key-up dispatch
+            :default-value (:text @currently-editing)}]])])))
+
 (defn notes-list []
-  (let [notes (re-frame/subscribe [:notes-list])]
+  (let [notes (re-frame/subscribe [:notes-list])
+        omnibar? (r/atom true)]
     (fn []
       [:div#notes-list
        [:h2 "Notes"]
-       [new-note-box]
-       [editing-note-box]
-       [search-box]
+       (if @omnibar?
+         [:div
+          [:button {:on-click #(do (reset! omnibar? false) false)} "use seperate inputs"]
+          [omnibar]]
+         [:div
+          [:button {:on-click #(do (reset! omnibar? true) false)} "use omnibar"]
+          separate-inputs])
        (doall
         (for [note @notes]
           [:div.note-content {:key (notes/id note)}

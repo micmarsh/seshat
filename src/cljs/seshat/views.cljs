@@ -113,31 +113,31 @@
 (defn login-form
   []
   (let [fail? (re-frame/subscribe [:failed-login?])
-        email (atom "")
+        name (atom "")
         pw (atom "")]
     (fn []
       [:div#login-form
        [:h3 "Login"]
-       [:label {:for "email"} "email"] [:br]
-       [:input {:type "text" :on-change (text-bind-callback email)}] [:br]
+       [:label {:for "name"} "Username or Email"] [:br]
+       [:input {:type "text" :on-change (text-bind-callback name)}] [:br]
        [:label {:for "password"} "password"] [:br]
        [:input {:type "password" :on-change (text-bind-callback pw)}] [:br]
-       [:button {:on-click #(re-frame/dispatch [:user-login @email @pw])} "login"]
+       [:button {:on-click #(re-frame/dispatch [:user-login @name @pw])} "login"]
        (when @fail?
          [:div [:span#login-failure-message "Bad credentials"]])])))
 
 (defn register-form
   []
-  (let [email (atom "")
+  (let [name (atom "")
         pw (atom "")]
     (fn []
       [:div#login-form 
        [:h3 "Register"] 
-       [:label {:for "email"} "email"] [:br]
-       [:input {:type "text" :on-change (text-bind-callback email)}] [:br]
+       [:label {:for "name"}  "Username or Email"] [:br]
+       [:input {:type "text" :on-change (text-bind-callback name)}] [:br]
        [:label {:for "password"} "password"] [:br]
        [:input {:type "password" :on-change (text-bind-callback pw)}] [:br]
-       [:button {:on-click #(re-frame/dispatch [:user-register @email @pw])} "register"]])))
+       [:button {:on-click #(re-frame/dispatch [:user-register @name @pw])} "register"]])))
 
 
 (defn not-authed

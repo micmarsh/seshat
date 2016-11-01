@@ -46,15 +46,15 @@
           (resp/response notes))))
 
 (defn ->login-route [auth]
-  (POST "/login" [email password]
-        (let [login-result (auth/session-login! auth email password)]
+  (POST "/login" [name password]
+        (let [login-result (auth/session-login! auth name password)]
           (if (keyword? login-result) ;; that darn keyword check again
-            {:status 401 :body {:email email :password password} :headers {}}
+            {:status 401 :body {:name name :password password} :headers {}}
             (resp/response login-result)))))
 
 (defn ->register-route [auth]
-  (POST "/register" [email password]
-        (if-let [register-result (auth/session-register! auth email password)]
+  (POST "/register" [name password]
+        (if-let [register-result (auth/session-register! auth name password)]
           (resp/response register-result)
           (bad-request "couldn't register"))))
 

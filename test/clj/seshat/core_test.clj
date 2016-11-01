@@ -46,6 +46,7 @@
           session (persist/fetch-local "session-id")]
       (is @logged-in? "subscriptions reflects auth state")
       (is (some? session))
+      (prn @auth/sessions)
       (is (= session (key (first @auth/sessions)))
           "local session matches up to server record")
       (is (= 1 (count @auth/users))

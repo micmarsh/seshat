@@ -1,17 +1,17 @@
 (ns seshat.handlers
-    (:require [re-frame.core :as re-frame]
-              [seshat.db :as db]
-              [seshat.config :as config]
-              [ajax.edn :refer [edn-response-format]]
-
-              [seshat.handlers.http]
-              [seshat.handlers.session]
-              [seshat.db.auth :as auth]
-
-              [clojure.spec :as s]
-              [seshat.spec.client]
-
-              [clojure.string :as str]))
+  (:require [re-frame.core :as re-frame]
+            [re-frame.handlers :refer [reg-event-re-dispatch]]
+            [seshat.db :as db]
+            [seshat.config :as config]
+            [ajax.edn :refer [edn-response-format]]
+            
+            [seshat.handlers.http]
+            [seshat.handlers.session]
+            [seshat.handlers.omnibar]
+            [seshat.db.auth :as auth]
+            
+            [clojure.spec :as s]
+            [seshat.spec.client]))
 
 (defn check-and-throw
   "Throw an exception if db doesn't have a valid spec."
@@ -24,17 +24,6 @@
   (if config/debug?
     (re-frame/after (fn [db & _] (check-and-throw :client/db db)))
     []))
-
-(defn reg-event-re-dispatch
-  ([event-key handler] (reg-event-re-dispatch event-key [] handler))
-  ([event-key middleware handler]
-   (re-frame/reg-event-fx
-    event-key
-    middleware
-    (fn [& args]
-      (if-let [events (seq (apply handler args))]
-        {:dispatch-n events}
-        {})))))
 
 (re-frame/reg-event-fx
  :initialize
@@ -85,22 +74,6 @@
  validate-spec-mw
  (fn [db [_ text]]
    (db/search-text db text)))
-
-(defn only-hashtags? [text]
-  (every? #(.startsWith % "#")
-          (str/split text #" ")))
-
-(defn editing [db]
-  (:display/currently-editing (:data/display db)))
-
-(reg-event-re-dispatch
- :omnibar-dispatch
- (fn [{:keys [db]} [_ raw-text]]
-   (let [text (str/trim raw-text)]
-     (cond (.startsWith text "search ") {:search (apply str (drop (count "search ") text))}
-           (only-hashtags? text) (mapv (partial vector :click-tag) (str/split text #" "))
-           (boolean (editing db)) [[:edited-note text (editing db)] [:cancel-editing-note]]
-           :else {:new-note text}))))
 
 (reg-event-re-dispatch
  :new-note

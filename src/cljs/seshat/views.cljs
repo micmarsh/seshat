@@ -58,7 +58,6 @@
                     (util/clear-input %))]
     (fn []
       [:div#omnibar
-       (prn "recalculating omnibar" (:text @currently-editing))
        (if (nil? @currently-editing)
          [:textarea {:on-key-up dispatch}]
          [:div#editing-omnibar
@@ -89,7 +88,8 @@
 
 (defn tags-list []
   (let [tags (re-frame/subscribe [:tags-list])
-        selected (re-frame/subscribe [:selected-tags])]
+        selected (re-frame/subscribe [:selected-tags])
+        search (re-frame/subscribe [:current-search-term])]
     (fn []
       [:div#tags-list
        [:h2 "Tags"]
@@ -99,6 +99,8 @@
           (into ()
                 (mapcat (fn [tag] [" " (util/tag-span tag)]))
                 @selected))]
+       (when-not (empty? @search)
+         [:div#search-term "Current Search: " @search])
        (doall
         (for [tag @tags]
           (assoc (util/tag-span tag) 0 :div.tag-text)))])))

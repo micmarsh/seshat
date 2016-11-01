@@ -49,3 +49,9 @@
 (re-frame/reg-sub
  :failed-login?
  (fn [db & _] (auth/login-fail? db)))
+
+(re-frame/reg-sub
+ :current-search-term
+ :<- [:display]
+ (fn [display & _]
+   (:filters/search (:display/filters display))))

@@ -13,16 +13,17 @@
     (.setTime date (+ (.getTime date) year-millis))
     date))
 
-(defn expired? [date] (.before (java.util.Date.) date))
+(defn expired? [date] (.after (java.util.Date.) date))
 
 (defn active-sessions
   [db]
   (d/filter db
-              (fn [db datom]
-                (->> (:e datom)
-                     (d/entity db)
-                     (:session/expires)
-                     (expired?)))))
+            (fn [db datom]
+              (->> (:e datom)
+                   (d/entity db)
+                   (:session/expires)
+                   (expired?)
+                   (not)))))
 
 (defrecord auth [connection]
   sp/Lookup
@@ -35,43 +36,43 @@
                    db id))))
   sp/NewFromUser
   (from-user [_ user]
-    {:session/id (java.util.UUID/randomUUID)
-     :user/id (:user/id user (:id user)) ;; TODO remove or once user
-     ;; creation is in place
-     :session/expires (expiration-date)})
+    (let [entity-id (or (:db/id user)
+                        (ffirst (d/q [:find '?e :where ['?e :user/id (:user/id user)]]
+                                     (d/db connection))))] ;; TODO remove `or` once user
+      ;; creation is in place
+      {:session/id (java.util.UUID/randomUUID)
+       :session/user entity-id  
+       :session/expires (expiration-date)}))
   sp/Save
   (save-session! [_ session]
     @(d/transact connection [(assoc session :db/id #db/id[:db.part/user])]))
   sp/UserId
-  (user-id [_ session] (:user/id session))
-  sp/Id (id [_ session] (str (:session/id session))))
+  (user-id [_ session]
+    (let [user (d/entity (d/db connection) (:db/id (:session/user session)))]
+      (:user/id user)))
+  sp/Id (id [_ session] (str (:session/id session)))
 
-(def fake-auth-test (->auth @connection))
-
-(def fake-auth
-  (reify
-    sp/Lookup
-    (lookup-session [_ key] (sp/lookup-session fake-auth-test key))
-    sp/Save
-    (save-session! [_ session] (sp/save-session! fake-auth-test session))
-    sp/NewFromUser 
-    (from-user [_ user] (sp/from-user fake-auth-test user))
-    sp/UserId
-    (user-id [_ session] (:user/id session))
-    sp/Id (id [_ session] (str (:session/id session)))
-    
-    p/Register
-    (register! [_ email pw]
-      (when-not (first (filter (comp #{email} :email) @users))
-        (let [new-user {:id (java.util.UUID/randomUUID)
-                        :email email
-                        :password pw}]
-          (swap! users conj new-user)
-          new-user)))
-    p/Login
-    (login [_ email password]
-      (if-let [email-match (first (filter (comp #{email} :email) @users))]
-        (if (= password (:password email-match))
-          email-match
-          :bad-password)
-        :no-user))))
+  p/Register
+  (register! [_ email pw]
+    (when-not (ffirst (d/q [:find '?e
+                            :where
+                            ['?e :user/email email]
+                            '[?e :user/deleted? false]]
+                           (d/db connection)))
+      (let [new-user #:user{:id (java.util.UUID/randomUUID)
+                            :email email
+                            :password pw}]
+        @(d/transact connection [(assoc new-user :user/deleted? false
+                                        :db/id #db/id[:db.part/user])])
+        new-user)))
+  p/Login
+  (login [_ email password]
+    (if-let [email-match (ffirst (d/q [:find '(pull ?e [*])
+                                       :where
+                                       ['?e :user/email email]
+                                       '[?e :user/deleted? false]]
+                                      (d/db connection)))]
+      (if (= password (:user/password email-match))
+        email-match
+        :bad-password)
+      :no-user)))

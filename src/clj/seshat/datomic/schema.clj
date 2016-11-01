@@ -8,12 +8,21 @@
     :db/doc "A user's unique identifier"}
    {:db/ident :user/email
     :db/valueType :db.type/string
+    :db/unique :db.unique/identity
     :db/doc "A user's email"}
+   {:db/ident :user/deleted?
+    :db/valueType :db.type/boolean
+    :db/doc "Whether or not a user is deleted"}
    {:db/ident :user/password
     :db/valueType :db.type/string
     :db/doc "A user's password"}
+   
+   {:db/ident :session/user
+    :db/valueType :db.type/ref
+    :db/doc "Reference to a session's user"}
    {:db/ident :session/id
     :db/valueType :db.type/uuid
+    :db/unique :db.unique/identity
     :db/doc "A session's unique identifier"}
    {:db/ident :session/expires
     :db/valueType :db.type/instant

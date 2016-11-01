@@ -46,15 +46,15 @@
           session (persist/fetch-local "session-id")]
       (is @logged-in? "subscriptions reflects auth state")
       (is (some? session))
-      (prn @auth/sessions)
       (is (= session (key (first @auth/sessions)))
           "local session matches up to server record")
       (is (= 1 (count @auth/users))
           "user created")
-      (is (= {:email +email+ :password +password+} ;; TODO account
+      (is (= #:user{:email +email+ :password +password+} ;; TODO account
              ;; for hashing in near future
-             (select-keys (first @auth/users) [:email :password]))
+             (select-keys (first @auth/users) [:user/email :user/password]))
           "user has correct info")
+      (prn "sessions before login" @auth/sessions)
       (testing "user can log in"
         (re-frame/dispatch [:user-login +email+ +password+])
         (let [new-session (persist/fetch-local "session-id")]
@@ -69,7 +69,7 @@
   (let [saved-notes (notes/all-notes)]
     (testing "initial notes properly saved in database"
       (is (= 5 (count saved-notes)))
-      (is (every? #{(:id (first @auth/users))}
+      (is (every? #{(:user/id (first @auth/users))}
                   (map :user-id saved-notes))))
     
     (testing "UI display filters"

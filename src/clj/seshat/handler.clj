@@ -55,8 +55,7 @@
 (defn ->register-route [auth]
   (POST "/register" [email password]
         (if-let [register-result (auth/session-register! auth email password)]
-          (do (prn 'register-result register-result)
-              (resp/response register-result))
+          (resp/response register-result)
           (bad-request "couldn't register"))))
 
 (def new-note-params (s/keys :req-un [:note/text :note/temp-id]))

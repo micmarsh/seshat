@@ -5,13 +5,22 @@
             [seshat.datomic.mem :refer [connection]]
             [datomic.api :as d]))
 
-(defn clear-users! [] (reset! impl/users []))
+(def users
+  (reify clojure.lang.IDeref
+    (deref [_]
+      (let [[users] (d/q '[:find (pull ?e [*]) :where [?e :user/deleted? false]]
+                         (d/db @connection))]
+        users))))
+
+(defn clear-users! []
+  (doseq [user @users]
+    @(d/transact @connection [(assoc user :user/deleted? true)])))
 
 (def sessions
   (reify clojure.lang.IDeref
     (deref [_]
       (let [[sessions] (d/q '[:find (pull ?e [*]) :where [?e :session/id]]
-                            (d/db @connection))]
+                            (impl/active-sessions (d/db @connection)))]
         (into { } (for [[id [session]] (group-by :session/id sessions)]
                     [(str id) session]))))))
 
@@ -22,5 +31,3 @@
 
 (defn clear! [] (clear-sessions!) (clear-users!))
 
-
-(def users impl/users)

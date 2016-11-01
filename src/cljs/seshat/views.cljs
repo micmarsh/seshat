@@ -21,7 +21,7 @@
          [:span "Edit Note: "]
          [:textarea
           {:default-value (:text @currently-editing)
-           :on-key-up #(when (util/enter? %)
+           :on-key-down #(when (util/enter? %)
                          (re-frame/dispatch [:edited-note (util/input-text %) @currently-editing])
                          (re-frame/dispatch [:cancel-editing-note]))}]
          " "
@@ -34,13 +34,15 @@
      [:input {:on-change #(re-frame/dispatch [:search (util/input-text %)])}]]))
 
 (defn note-buttons [note]
-  (fn []
-    [:div.note-buttons
-     [:button {:on-click #(re-frame/dispatch [:start-editing-note note])}
-      "edit"]
-     " "
-     [:button {:on-click #(re-frame/dispatch [:delete-note note])}
-      "delete"]]))
+  (let [editing? (re-frame/subscribe [:currently-editing])]
+    (fn []
+      [:div.note-buttons
+       (when-not @editing?
+         [:button {:on-click #(re-frame/dispatch [:start-editing-note note])}
+          "edit"])
+       " "
+       [:button {:on-click #(re-frame/dispatch [:delete-note note])}
+        "delete"]])))
 
 (def separate-inputs
   [:div#inputs
@@ -61,8 +63,10 @@
          [:textarea {:on-key-up dispatch}]
          [:div#editing-omnibar
           [:textarea
-           {:on-key-up dispatch
-            :default-value (:text @currently-editing)}]])])))
+           {:on-key-down dispatch
+            :default-value (:text @currently-editing)}]
+          " "
+          [:button {:on-click #(re-frame/dispatch [:cancel-editing-note])} "cancel"]])])))
 
 (defn notes-list []
   (let [notes (re-frame/subscribe [:notes-list])

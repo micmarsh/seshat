@@ -2,6 +2,7 @@
   (:require [seshat.session.protocols :as sp]
             [seshat.auth.protocols :as p]
             [seshat.datomic.mem :refer [connection]]
+            [seshat.passwords :as pw]
             [datomic.api :as d]))
 
 (def ^:const year-millis (* 1000 60 60 24 365))
@@ -59,10 +60,10 @@
                            (d/db connection)))
       (let [new-user #:user{:id (java.util.UUID/randomUUID)
                             :name name
-                            :password pw}]
+                            :password (pw/hash-bcrypt pw)}]
         @(d/transact connection [(assoc new-user :user/deleted? false
                                         :db/id #db/id[:db.part/user])])
-        new-user)))
+        (dissoc new-user :user/password))))
   p/Login
   (login [_ name password]
     (if-let [name-match (ffirst (d/q [:find '(pull ?e [*])
@@ -70,7 +71,7 @@
                                        ['?e :user/name name]
                                        '[?e :user/deleted? false]]
                                       (d/db connection)))]
-      (if (= password (:user/password name-match))
+      (if (pw/bcrypt-verify password (:user/password name-match))
         name-match
         :bad-password)
       :no-user)))

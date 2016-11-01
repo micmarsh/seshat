@@ -1,7 +1,7 @@
 (ns seshat.core-test
   (:require [clojure.test :refer [deftest is run-tests testing use-fixtures]]
             [re-frame.core :as re-frame]
-
+            [seshat.passwords :as pw]
             [seshat.persist :as persist]
             [seshat.test
              [auth :as auth]
@@ -50,10 +50,10 @@
           "local session matches up to server record")
       (is (= 1 (count @auth/users))
           "user created")
-      (is (= #:user{:name +email+ :password +password+} ;; TODO account
-             ;; for hashing in near future
-             (select-keys (first @auth/users) [:user/name :user/password]))
-          "user has correct info")
+      (let [user (first @auth/users)]
+        (is (and (= +email+ (:user/name user))
+                 (pw/bcrypt-verify +password+ (:user/password user)))
+           "user has correct info"))
       (testing "user can log in"
         (re-frame/dispatch [:user-login +email+ +password+])
         (let [new-session (persist/fetch-local "session-id")]

@@ -19,9 +19,9 @@
 (def sessions
   (reify clojure.lang.IDeref
     (deref [_]
-      (let [[sessions] (d/q '[:find (pull ?e [*]) :where [?e :session/id]]
-                            (impl/active-sessions (d/db @connection)))]
-        (into { } (for [[id [session]] (group-by :session/id sessions)]
+      (let [sessions (d/q '[:find (pull ?e [*]) :where [?e :session/id]]
+                          (impl/active-sessions (d/db @connection)))]
+        (into { } (for [[id [session]] (group-by :session/id (map first  sessions))]
                     [(str id) session]))))))
 
 

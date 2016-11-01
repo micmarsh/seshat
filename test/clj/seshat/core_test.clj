@@ -54,7 +54,6 @@
              ;; for hashing in near future
              (select-keys (first @auth/users) [:user/email :user/password]))
           "user has correct info")
-      (prn "sessions before login" @auth/sessions)
       (testing "user can log in"
         (re-frame/dispatch [:user-login +email+ +password+])
         (let [new-session (persist/fetch-local "session-id")]

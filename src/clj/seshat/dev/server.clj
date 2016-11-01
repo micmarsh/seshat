@@ -6,10 +6,12 @@
             [seshat.handler :refer [->routes-data]]
             [ring.handler :as handler]))
 
+(def auth (->auth @connection))
+
 (def dev-routes
   (handler/compile
    (->routes-data
     (->user-data @connection)
-    (->auth @connection))))
+    auth)))
 
 (def handler (-> #'dev-routes wrap-reload))

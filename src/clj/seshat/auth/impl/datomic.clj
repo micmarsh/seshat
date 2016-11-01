@@ -51,26 +51,26 @@
   sp/Id (id [_ session] (str (:session/id session)))
 
   p/Register
-  (register! [_ email pw]
+  (register! [_ name pw]
     (when-not (ffirst (d/q [:find '?e
                             :where
-                            ['?e :user/email email]
+                            ['?e :user/name name]
                             '[?e :user/deleted? false]]
                            (d/db connection)))
       (let [new-user #:user{:id (java.util.UUID/randomUUID)
-                            :email email
+                            :name name
                             :password pw}]
         @(d/transact connection [(assoc new-user :user/deleted? false
                                         :db/id #db/id[:db.part/user])])
         new-user)))
   p/Login
-  (login [_ email password]
-    (if-let [email-match (ffirst (d/q [:find '(pull ?e [*])
+  (login [_ name password]
+    (if-let [name-match (ffirst (d/q [:find '(pull ?e [*])
                                        :where
-                                       ['?e :user/email email]
+                                       ['?e :user/name name]
                                        '[?e :user/deleted? false]]
                                       (d/db connection)))]
-      (if (= password (:user/password email-match))
-        email-match
+      (if (= password (:user/password name-match))
+        name-match
         :bad-password)
       :no-user)))

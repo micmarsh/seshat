@@ -50,9 +50,9 @@
           "local session matches up to server record")
       (is (= 1 (count @auth/users))
           "user created")
-      (is (= #:user{:email +email+ :password +password+} ;; TODO account
+      (is (= #:user{:name +email+ :password +password+} ;; TODO account
              ;; for hashing in near future
-             (select-keys (first @auth/users) [:user/email :user/password]))
+             (select-keys (first @auth/users) [:user/name :user/password]))
           "user has correct info")
       (testing "user can log in"
         (re-frame/dispatch [:user-login +email+ +password+])

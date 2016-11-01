@@ -210,11 +210,11 @@
 
 (reg-event-re-dispatch
  :user-login
- (fn [_ [_ email password]]
+ (fn [_ [_ name password]]
    {:http {:method :post
            :uri "/login"
            :headers {"content-type" "application/edn"}
-           :body (pr-str {:email email :password password})
+           :body (pr-str {:name name :password password})
            :response-format (edn-response-format)
            :on-success [:new-session]
            :on-auth-failure [:failed-login]
@@ -222,11 +222,11 @@
 
 (reg-event-re-dispatch
  :user-register
- (fn [_ [_ email password]]
+ (fn [_ [_ name password]]
    {:http {:method :post
            :uri "/register"
            :headers {"content-type" "application/edn"}
-           :body (pr-str {:email email :password password})
+           :body (pr-str {:name name :password password})
            :response-format (edn-response-format)
            :on-success [:new-session]
            :on-failure [:FIXME-generic-fail]}}))

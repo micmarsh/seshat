@@ -6,7 +6,7 @@
     :db/valueType :db.type/uuid
     :db/unique :db.unique/identity
     :db/doc "A user's unique identifier"}
-   {:db/ident :user/email
+   {:db/ident :user/name
     :db/valueType :db.type/string
     :db/unique :db.unique/identity
     :db/doc "A user's email"}

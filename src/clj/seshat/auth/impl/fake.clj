@@ -1,6 +1,7 @@
 (ns seshat.auth.impl.fake
   (:require [seshat.session.protocols :as sp]
             [seshat.auth.protocols :as p]
+            [seshat.datomic.mem :refer [connection]]
             [datomic.api :as d]))
 
 (def users (atom []))
@@ -45,38 +46,7 @@
   (user-id [_ session] (:user/id session))
   sp/Id (id [_ session] (str (:session/id session))))
 
-
-
-(def ^:const auth-schema
-  [{:db/ident :user/id
-    :db/valueType :db.type/uuid
-    :db/unique :db.unique/identity
-    :db/doc "A user's unique identifier"}
-   {:db/ident :user/email
-    :db/valueType :db.type/string
-    :db/doc "A user's email"}
-   {:db/ident :user/password
-    :db/valueType :db.type/string
-    :db/doc "A user's password"}
-   {:db/ident :session/id
-    :db/valueType :db.type/uuid
-    :db/doc "A session's unique identifier"}
-   {:db/ident :session/expires
-    :db/valueType :db.type/instant
-    :db/doc "The time a given session expires"}])
-
-(defn initialize
-  ;; TODO this + schema is going to need to be consolidated with notes stuff
-  [uri]
-  (when (d/create-database uri)
-    @(d/transact (d/connect uri)
-                 (mapv #(assoc % :db/id (d/tempid :db.part/db)
-                               :db.install/_attribute :db.part/db
-                               :db/cardinality :db.cardinality/one)
-                       auth-schema)))
-  (->auth (d/connect uri)))
-
-(def fake-auth-test (initialize "datomic:mem://auth"))
+(def fake-auth-test (->auth @connection))
 
 (def fake-auth
   (reify

@@ -1,8 +1,7 @@
 (ns seshat.test.notes
   (:require [seshat.datomic.mem :refer [connection]]
             [seshat.database.impl.datomic :as datom]
-            [datomic.api :as d]
-            [seshat.auth.impl.fake :as auth]))
+            [datomic.api :as d]))
 
 (defn -read-note [db id]
   (when-let [entity-id (ffirst (d/q [:find '?e :where ['?e :note/id id] '[?e :note/deleted? false]] db))]

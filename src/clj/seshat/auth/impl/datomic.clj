@@ -1,10 +1,8 @@
-(ns seshat.auth.impl.fake
+(ns seshat.auth.impl.datomic
   (:require [seshat.session.protocols :as sp]
             [seshat.auth.protocols :as p]
             [seshat.datomic.mem :refer [connection]]
             [datomic.api :as d]))
-
-(def users (atom []))
 
 (def ^:const year-millis (* 1000 60 60 24 365))
 

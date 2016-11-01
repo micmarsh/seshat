@@ -6,7 +6,7 @@
             [ring.middleware.edn :refer [wrap-edn-params]]
             [ring.middleware.multipart-params :refer [wrap-multipart-params]]
             [seshat.database.protocols :as p]
-            [seshat.auth.login :as auth] ;; TODO ns name change
+            [seshat.auth.user :as auth]
             [seshat.middleware :as m]
             [seshat.session.middleware :as sm]
             [seshat.import.fetchnotes :as f]

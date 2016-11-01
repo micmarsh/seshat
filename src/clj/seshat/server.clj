@@ -6,7 +6,7 @@
             ;; these are going to change before actually deployed
             [seshat.datomic.mem :refer [connection]]
             [seshat.database.impl.datomic :refer [->user-data]]
-            [seshat.auth.impl.fake :refer [->auth]])
+            [seshat.auth.impl.datomic :refer [->auth]])
   (:gen-class))
 
 

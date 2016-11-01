@@ -1,4 +1,4 @@
-(ns seshat.auth.login
+(ns seshat.auth.user
   (:require [seshat.session.protocols :as sp]
             [seshat.auth.protocols :as p]))
 

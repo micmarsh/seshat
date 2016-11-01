@@ -4,7 +4,7 @@
             [clojure.spec :as s]
 
             [seshat.dev.server :refer [auth]]
-            [seshat.auth.login :refer [session-register!]]
+            [seshat.auth.user :refer [session-register!]]
             ;; two nses whose name needs to change, lol^
             ))
 

@@ -2,7 +2,7 @@
   (:require [ring.middleware.reload :refer [wrap-reload]]
             [seshat.datomic.mem :refer [connection]]
             [seshat.database.impl.datomic :refer [->user-data]]
-            [seshat.auth.impl.fake :refer [->auth]]
+            [seshat.auth.impl.datomic :refer [->auth]]
             [seshat.handler :refer [->routes-data]]
             [ring.handler :as handler]))
 
